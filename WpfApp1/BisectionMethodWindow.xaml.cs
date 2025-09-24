@@ -47,10 +47,8 @@ namespace WpfApp1
 
                 DihotomyMethod method = new DihotomyMethod(function);
                 double minimum = method.FindRoot(a, b, epsilon);
-                double minValue = method.CalculateFunction(minimum);
 
                 lblResult.Text = $"Корень: x = {minimum:F6}";
-                lblFunctionValue.Text = $"f(min) = {minValue:F6}";
                 lblIterations.Text = $"Количество итераций: {method.IterationsCount}";
 
                 PlotGraph(a, b, minimum, method);
@@ -129,7 +127,6 @@ namespace WpfApp1
             txtEpsilon.Text = "0,001";
             txtFunction.Text = "";
             lblResult.Text = "Результат: ";
-            lblFunctionValue.Text = "f(min) = ";
             lblIterations.Text = "Количество итераций: ";
             FunctionValues.Clear();
             MinimumPoint.Clear();

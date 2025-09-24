@@ -5,101 +5,204 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         mc:Ignorable="d"
-        Title="Метод дихотомии" 
-        Height="600" Width="800"
+        Title="Метод дихотомии"
+        Height="700" Width="1000"
         WindowStartupLocation="CenterScreen"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        FontFamily="Segoe UI">
 
-    <Window.Background>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#ebf2fa" Offset="0.0" />
-            <GradientStop Color="#e4edf6" Offset="0.6" />
-            <GradientStop Color="#dae3f0" Offset="1.0" />
-        </LinearGradientBrush>
-    </Window.Background>
+	<Window.Resources>
+		<Style x:Key="ModernButton" TargetType="Button">
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Height" Value="32"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Border x:Name="border"
+                                CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+							<ContentPresenter x:Name="contentPresenter"
+                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                            Content="{TemplateBinding Content}"
+                                            ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Margin="10,5"/>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#3A6DB0"/>
+								<Setter TargetName="border" Property="Effect">
+									<Setter.Value>
+										<DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#30000000"/>
+									</Setter.Value>
+								</Setter>
+							</Trigger>
+							<Trigger Property="IsPressed" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#1E4A7A"/>
+								<Setter TargetName="border" Property="RenderTransform">
+									<Setter.Value>
+										<ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+									</Setter.Value>
+								</Setter>
+							</Trigger>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter TargetName="border" Property="Background" Value="#B0B0B0"/>
+								<Setter TargetName="border" Property="Opacity" Value="0.6"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+		<Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#2C5F9E"/>
+			<Setter Property="Background" Value="#FFFFFF"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Padding" Value="10"/>
+			<Setter Property="Margin" Value="10"/>
+		</Style>
 
-        <!-- Menu -->
-        <Menu Grid.Row="0">
-            <MenuItem Header="Файл">
-                <MenuItem Header="Рассчитать" Click="Calculate_Click"/>
-                <MenuItem Header="Очистить" Click="Clear_Click"/>
-                <Separator/>
-                <MenuItem Header="Выход" Click="Exit_Click"/>
-            </MenuItem>
-        </Menu>
+		<Style x:Key="TextBoxStyle" TargetType="TextBox">
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#CCCCCC"/>
+			<Setter Property="Background" Value="#FFFFFF"/>
+			<Setter Property="Foreground" Value="#333333"/>
+			<Setter Property="Padding" Value="8,4"/>
+			<Setter Property="FontSize" Value="13"/>
+		</Style>
 
-        <!-- Input parameters -->
-        <GroupBox Grid.Row="1" Header="Параметры" Margin="10" Padding="10">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+		<Style x:Key="LabelStyle" TargetType="Label">
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="FontSize" Value="13"/>
+		</Style>
+	</Window.Resources>
 
-                <Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Margin="5"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Margin="5" 
-                         Text="x*x - 2*x + 1" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
+	<Window.Background>
+		<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+			<GradientStop Color="#f0f5fc" Offset="0.0" />
+			<GradientStop Color="#e8eff8" Offset="0.4" />
+			<GradientStop Color="#dde6f2" Offset="1.0" />
+		</LinearGradientBrush>
+	</Window.Background>
 
-                <Label Grid.Row="1" Grid.Column="0" Content="Начало интервала a:" Margin="5"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Name="txtA" Margin="5" Text="0"/>
+	<Grid>
+		<Ellipse Width="200" Height="200" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-60,-60"/>
+		<Ellipse Width="150" Height="150" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-40,-40"/>
 
-                <Label Grid.Row="2" Grid.Column="0" Content="Конец интервала b:" Margin="5"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Name="txtB" Margin="5" Text="2"/>
+		<Grid Margin="20">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+			</Grid.RowDefinitions>
 
-                <Label Grid.Row="3" Grid.Column="0" Content="Точность ε:" Margin="5"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Name="txtEpsilon" Margin="5" Text="0,001"/>
+			<!-- Menu -->
+			<Menu Grid.Row="0" Background="Transparent">
+				<MenuItem Header="Файл" Foreground="#2C5F9E" FontWeight="SemiBold">
+					<MenuItem Header="Рассчитать" Click="Calculate_Click"/>
+					<MenuItem Header="Очистить" Click="Clear_Click"/>
+					<Separator/>
+					<MenuItem Header="Выход" Click="Exit_Click"/>
+				</MenuItem>
+			</Menu>
 
-                <Button Grid.Row="4" Grid.Column="1" Name="btnCalculate" Content="Рассчитать" 
-                        Margin="5" HorizontalAlignment="Right" Width="100" Click="Calculate_Click"/>
-            </Grid>
-        </GroupBox>
+			<!-- Header -->
+			<StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,0,0,15">
+				<TextBlock Text="Метод дихотомии"
+                          FontSize="28"
+                          FontWeight="Light"
+                          Foreground="#2C5F9E"
+                          HorizontalAlignment="Center"/>
+			</StackPanel>
 
-        <!-- Results and Chart -->
-        <GroupBox Grid.Row="2" Header="Результаты" Margin="10" Padding="10">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+			<!-- Input parameters -->
+			<GroupBox Grid.Row="2" Header="Параметры расчета" Style="{StaticResource GroupBoxStyle}" Margin="0,0,0,10">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+					</Grid.RowDefinitions>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto"/>
+						<ColumnDefinition Width="*"/>
+						<ColumnDefinition Width="Auto"/>
+					</Grid.ColumnDefinitions>
 
-                <!-- Results -->
-                <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,10">
-                    <TextBlock Name="lblResult" Text="Результат: " FontWeight="Bold" Margin="0,0,0,5"/>
-                    <TextBlock Name="lblFunctionValue" Text="f(min) = " FontWeight="Bold" Margin="0,0,0,5"/>
-                    <TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold"/>
-                </StackPanel>
+					<Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
+                             Text="x*x - 2*x + 1" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
 
-                <!-- Chart -->
-                <lvc:CartesianChart Name="chart" LegendLocation="Right" Margin="0,-248,0,98">
-                    <lvc:CartesianChart.Series>
-                        <lvc:LineSeries Title="Функция" Values="{Binding FunctionValues}" 
-                                      PointGeometry="{x:Null}" LineSmoothness="0" Stroke="Blue" StrokeThickness="2"/>
-                        <lvc:ScatterSeries Title="Корень" Values="{Binding MinimumPoint}" 
-                 PointGeometry="{x:Static lvc:DefaultGeometries.Circle}" 
-                 Stroke="Red" Fill="Red" StrokeThickness="3"/>
-                    </lvc:CartesianChart.Series>
-                    <lvc:CartesianChart.AxisX>
-                        <lvc:Axis Title="x"/>
-                    </lvc:CartesianChart.AxisX>
-                    <lvc:CartesianChart.AxisY>
-                        <lvc:Axis Title="f(x)"/>
-                    </lvc:CartesianChart.AxisY>
-                </lvc:CartesianChart>
-            </Grid>
-        </GroupBox>
-    </Grid>
+					<Label Grid.Row="1" Grid.Column="0" Content="Начало интервала a:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="1" Grid.Column="1" Name="txtA" Style="{StaticResource TextBoxStyle}" Text="0"/>
+
+					<Label Grid.Row="2" Grid.Column="0" Content="Конец интервала b:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="2" Grid.Column="1" Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2"/>
+
+					<Label Grid.Row="3" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="3" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
+
+					<Button Grid.Row="4" Grid.Column="1" Name="btnCalculate" Content="Рассчитать"
+                            Style="{StaticResource ModernButton}" HorizontalAlignment="Right" Width="120" Click="Calculate_Click"/>
+				</Grid>
+			</GroupBox>
+
+			<!-- Results and Chart -->
+			<GroupBox Grid.Row="3" Header="Результаты расчета" Style="{StaticResource GroupBoxStyle}">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="*"/>
+					</Grid.RowDefinitions>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="250"/>
+						<ColumnDefinition Width="*"/>
+					</Grid.ColumnDefinitions>
+
+					<!-- Results -->
+					<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
+						<TextBlock Name="lblResult" Text="Результат: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold" Foreground="#2C5F9E" FontSize="14"/>
+					</StackPanel>
+
+					<!-- Chart -->
+					<Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderThickness="1" BorderBrush="#E0E0E0"
+                            Background="#FFFFFF" CornerRadius="4" Padding="10" Margin="0,0,0,0"
+                            Height="250" VerticalAlignment="Stretch">
+						<lvc:CartesianChart Name="chart" LegendLocation="Right"
+                                          Height="230" MinWidth="600"
+                                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+							<lvc:CartesianChart.Series>
+								<lvc:LineSeries Title="Функция" Values="{Binding FunctionValues}"
+                                              PointGeometry="{x:Null}" LineSmoothness="0" Stroke="#2C5F9E" StrokeThickness="2"/>
+								<lvc:ScatterSeries Title="Корень" Values="{Binding MinimumPoint}"
+                                                 PointGeometry="{x:Static lvc:DefaultGeometries.Circle}"
+                                                 Stroke="#FF6B8E" Fill="#FF6B8E" StrokeThickness="3"/>
+							</lvc:CartesianChart.Series>
+							<lvc:CartesianChart.AxisX>
+								<lvc:Axis Title="x" Foreground="#2C5F9E" FontSize="12"/>
+							</lvc:CartesianChart.AxisX>
+							<lvc:CartesianChart.AxisY>
+								<lvc:Axis Title="f(x)" Foreground="#2C5F9E" FontSize="12"/>
+							</lvc:CartesianChart.AxisY>
+						</lvc:CartesianChart>
+					</Border>
+				</Grid>
+			</GroupBox>
+		</Grid>
+	</Grid>
 </Window>
