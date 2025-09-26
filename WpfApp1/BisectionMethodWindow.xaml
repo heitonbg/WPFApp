@@ -176,6 +176,7 @@
 					<!-- Results -->
 					<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
 						<TextBlock Name="lblResult" Text="Результат: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblFunctionValue" Text="Значение функции: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
 						<TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold" Foreground="#2C5F9E" FontSize="14"/>
 					</StackPanel>
 
@@ -189,7 +190,7 @@
 							<lvc:CartesianChart.Series>
 								<lvc:LineSeries Title="Функция" Values="{Binding FunctionValues}"
                                               PointGeometry="{x:Null}" LineSmoothness="0" Stroke="#2C5F9E" StrokeThickness="2"/>
-								<lvc:ScatterSeries Title="Корень" Values="{Binding MinimumPoint}"
+								<lvc:ScatterSeries Title="Корни" Values="{Binding RootPoints}"
                                                  PointGeometry="{x:Static lvc:DefaultGeometries.Circle}"
                                                  Stroke="#FF6B8E" Fill="#FF6B8E" StrokeThickness="3"/>
 							</lvc:CartesianChart.Series>

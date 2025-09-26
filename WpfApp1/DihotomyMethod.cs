@@ -48,9 +48,24 @@ namespace WpfApp1
                     {
                         args.Result = Math.Log(Convert.ToDouble(args.Parameters[0].Evaluate()));
                     }
+                    else if (args.Parameters.Length == 2)
+                    {
+                        args.Result = Math.Log(Convert.ToDouble(args.Parameters[0].Evaluate()),
+                                             Convert.ToDouble(args.Parameters[1].Evaluate()));
+                    }
                     else
                     {
-                        args.Result = Math.Log(Convert.ToDouble(args.Parameters[0].Evaluate()), Convert.ToDouble(args.Parameters[1].Evaluate()));
+                        throw new ArgumentException("Функция log требует 1 или 2 аргумента");
+                    }
+                    break;
+                case "log10":
+                    if (args.Parameters.Length == 1)
+                    {
+                        args.Result = Math.Log10(Convert.ToDouble(args.Parameters[0].Evaluate()));
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Функция log10 требует 1 аргумент");
                     }
                     break;
                 case "pow":
@@ -65,11 +80,21 @@ namespace WpfApp1
         {
             try
             {
+                if (Math.Abs(x) > 1e10)
+                {
+                    return double.MaxValue / 1000;
+                }
+
                 _expression.Parameters["x"] = x;
                 var result = _expression.Evaluate();
 
                 if (result is double doubleResult)
                 {
+                    if (double.IsInfinity(doubleResult) || double.IsNaN(doubleResult))
+                    {
+                        return double.MaxValue;
+                    }
+
                     return doubleResult;
                 }
 
@@ -77,6 +102,7 @@ namespace WpfApp1
                 {
                     return intResult;
                 }
+
                 if (result is decimal decimalResult)
                 {
                     return (double)decimalResult;
@@ -90,79 +116,135 @@ namespace WpfApp1
             }
         }
 
-        public double FindRoot(double a, double b, double epsilon)
+        public List<double> FindRoots(double a, double b, double epsilon, int maxRoots = 10)
         {
             if (a >= b)
             {
-                throw new ArgumentException("Интервал [a, b] задан неверно: a должно быть меньше b");
+                throw new ArgumentException("Интервал [a, b] задан неверно");
             }
 
             if (epsilon <= 0)
             {
-                throw new ArgumentException("Точность epsilon должна быть положительным числом");
+                throw new ArgumentException("Точность epsilon должна быть положительной");
             }
 
+            List<double> roots = new List<double>();
+            IterationsCount = 0;
+
+            int segments = 100;
+            double segmentStep = (b - a) / segments;
+
+            for (int i = 0; i < segments; ++i)
+            {
+                double segmentStart = a + i * segmentStep;
+                double segmentEnd = segmentStart + segmentStep;
+
+                double fStart = CalculateFunction(segmentStart);
+                double fEnd = CalculateFunction(segmentEnd);
+
+                if (Math.Abs(fStart) < epsilon)
+                {
+                    AddRootIfNew(roots, segmentStart, epsilon);
+                    continue;
+                }
+
+                if (fStart * fEnd < 0)
+                {
+                    double root = FindSingleRoot(segmentStart, segmentEnd, epsilon);
+                    AddRootIfNew(roots, root, epsilon);
+                }
+
+                else if (Math.Abs(fStart) < epsilon * 10 && Math.Abs(fEnd) < epsilon * 10)
+                {
+                    double mid = (segmentStart + segmentEnd) / 2;
+                    if (Math.Abs(CalculateFunction(mid)) < epsilon)
+                    {
+                        AddRootIfNew(roots, mid, epsilon);
+                    }
+                }
+
+                if (roots.Count >= maxRoots)
+                {
+                    break;
+                }
+            }
+
+            return roots;
+        }
+
+        private void AddRootIfNew(List<double> roots, double newRoot, double epsilon)
+        {
+            if (!roots.Any(root => Math.Abs(root - newRoot) < epsilon))
+            {
+                roots.Add(newRoot);
+            }
+        }
+
+        private double FindSingleRoot(double a, double b, double epsilon)
+        {
             double fa = CalculateFunction(a);
             double fb = CalculateFunction(b);
 
-            // Проверка условия f(a)*f(b) < 0
-            if (fa * fb >= 0)
+            if (Math.Abs(fa) < epsilon)
             {
-                throw new ArgumentException("На концах интервала [a, b] функция должна принимать значения разных знаков (f(a)*f(b) < 0)");
+                return a;
             }
 
-            IterationsCount = 0;
-            double c = 0;
+            if (Math.Abs(fb) < epsilon)
+            {
+                return b;
+            }
+
+            if (fa * fb >= 0)
+            {
+                throw new ArgumentException("На интервале нет смены знака");
+            }
 
             while (Math.Abs(b - a) > epsilon)
             {
-                c = (a + b) / 2;
-                double fc = CalculateFunction(c);
-
-                if (Math.Abs(fc) < epsilon)
-                {
-                    // Найден достаточно точный корень
-                    break;
-                }
-
-                if (fa * fc < 0)
-                {
-                    // Корень находится в левой половине [a, c]
-                    b = c;
-                    fb = fc;
-                }
-                else
-                {
-                    // Корень находится в правой половине [c, b]
-                    a = c;
-                    fa = fc;
-                }
+                double mid = (a + b) / 2;
+                double fmid = CalculateFunction(mid);
 
                 IterationsCount++;
 
+                if (Math.Abs(fmid) < epsilon)
+                {
+                    return mid;
+                }
+
+                if (fa * fmid < 0)
+                {
+                    b = mid;
+                    fb = fmid;
+                }
+                else
+                {
+                    a = mid;
+                    fa = fmid;
+                }
+
                 if (IterationsCount > 1000)
                 {
-                    throw new Exception("Превышено максимальное количество итераций (1000). " +
-                                      "Возможно, функция не имеет корня на заданном интервале или интервал слишком большой.");
+                    break;
                 }
             }
 
             return (a + b) / 2;
         }
 
-        // Дополнительный метод для получения значения функции в найденном корне
-        public double GetFunctionValueAtRoot(double a, double b, double epsilon)
+        public bool IsConstantFunction(double a, double b)
         {
-            double root = FindRoot(a, b, epsilon);
-            return CalculateFunction(root);
-        }
+            double[] testPoints = { a, (a + b) / 2, b, a + (b - a) / 4, a + 3 * (b - a) / 4 };
+            double firstValue = CalculateFunction(testPoints[0]);
 
-        // Метод для проверки наличия корня на интервале
-        public bool HasRoot(double a, double b)
-        {
-            double fa = CalculateFunction(a);
-            double fb = CalculateFunction(b);
-            return fa * fb < 0;
+            foreach (double point in testPoints)
+            {
+                if (Math.Abs(CalculateFunction(point) - firstValue) > 1e-15)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }
