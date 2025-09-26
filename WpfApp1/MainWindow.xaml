@@ -110,17 +110,17 @@
                             Click="Button_Click"
                             Margin="0,0,0,12"/>
 
+                    <Button Content="Решение СЛАУ" 
+                            Style="{StaticResource ModernButton}"
+                            IsEnabled="False"
+                            Margin="0,0,0,12"/>
+
+                    <Button Content="Метод золотого сечения" 
+                            Style="{StaticResource ModernButton}"
+                            IsEnabled="False"
+                            Margin="0,0,0,12"/>
+
                     <Button Content="Метод Ньютона" 
-                            Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
-                            Margin="0,0,0,12"/>
-
-                    <Button Content="Метод 3" 
-                            Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
-                            Margin="0,0,0,12"/>
-
-                    <Button Content="Метод 4" 
                             Style="{StaticResource ModernButton}"
                             IsEnabled="False"
                             Margin="0,0,0,12"/>
@@ -128,22 +128,22 @@
 
                 <StackPanel Grid.Column="2">
 
-                    <Button Content="Метод 5" 
+                    <Button Content="Метод покоординатного спуска" 
                             Style="{StaticResource ModernButton}"
                             IsEnabled="False"
                             Margin="0,0,0,12"/>
 
-                    <Button Content="Метод 6" 
+                    <Button Content="Метод наименьших квадратов" 
                             Style="{StaticResource ModernButton}"
                             IsEnabled="False"
                             Margin="0,0,0,12"/>
 
-                    <Button Content="Метод 7" 
+                    <Button Content="Олимпиадные сортировки" 
                             Style="{StaticResource ModernButton}"
                             IsEnabled="False"
                             Margin="0,0,0,12"/>
 
-                    <Button Content="Метод 8" 
+                    <Button Content="Решение интеграла" 
                             Style="{StaticResource ModernButton}"
                             IsEnabled="False"
                             Margin="0,0,0,12"/>
