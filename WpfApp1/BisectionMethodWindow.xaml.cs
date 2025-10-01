@@ -93,10 +93,11 @@ namespace WpfApp1
                     lblResult.Text = $"Найдено корней: {roots.Count}";
                     lblFunctionValue.Text = "См. точки на графике";
 
-                    if (roots.Count > 2)
+                    if (roots.Count >= 2)
                     {
-                        MessageBox.Show($"Найдено {roots.Count} корней! Возможно, функция имеет много нулей или осциллирует.",
+                        MessageBox.Show($"Найдено больше 1 корня! Возможно, функция имеет много нулей или осциллирует.",
                                       "Много корней", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
                     }
                 }
 
@@ -205,8 +206,8 @@ namespace WpfApp1
 
         private void Clear_Click(object sender, RoutedEventArgs e)
         {
-            txtA.Text = "-10";
-            txtB.Text = "10";
+            txtA.Text = "-1";
+            txtB.Text = "2";
             txtEpsilon.Text = "0,0001";
             txtFunction.Text = "sin(x)";
             lblResult.Text = "Результат: ";
@@ -232,32 +233,6 @@ namespace WpfApp1
             FunctionValues?.Clear();
             RootPoints?.Clear();
             SeriesCollection?.Clear();
-        }
-
-        private void ShowSyntaxHelp()
-        {
-            string helpText = @"Поддерживаемые математические функции:
-
-Базовые операции: + - * /
-Возведение в степень: pow(x,y)  (например: pow(x,2))
-Тригонометрические: sin(x), cos(x), tan(x)
-Экспонента и логарифмы: exp(x), log(x), log10(x)
-Корни: sqrt(x)
-Модуль: abs(x)
-
-Константы: pi, e
-
-Примеры:
-• x^2 + 3*x + 1 → pow(x,2) + 3*x + 1
-• sin(x)^2 → pow(sin(x),2)
-• e^(2*x) → pow(e,2*x)";
-
-            MessageBox.Show(helpText, "Справка по синтаксису", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void Help_Click(object sender, RoutedEventArgs e)
-        {
-            ShowSyntaxHelp();
         }
 
         private string PreprocessFunction(string function)

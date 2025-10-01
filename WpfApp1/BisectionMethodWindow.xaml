@@ -145,7 +145,7 @@
 
 					<Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
 					<TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
-                             Text="x*x - 2*x + 1" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
+                             Text="sin(x)" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
 
 					<Label Grid.Row="1" Grid.Column="0" Content="Начало интервала a:" Style="{StaticResource LabelStyle}" Margin="5"/>
 					<TextBox Grid.Row="1" Grid.Column="1" Name="txtA" Style="{StaticResource TextBoxStyle}" Text="0"/>

@@ -112,7 +112,7 @@
 
                     <Button Content="Решение СЛАУ" 
                             Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
+                            Click="Button_ClickSLAE"
                             Margin="0,0,0,12"/>
 
                     <Button Content="Метод золотого сечения" 

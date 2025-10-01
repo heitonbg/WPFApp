@@ -34,6 +34,13 @@ namespace WpfApp1
             this.Hide();
             objBisectionMethod.Show();
         }
+        private void Button_ClickSLAE(object sender, RoutedEventArgs e)
+        {
+            SLAEWindow objSLAE = new SLAEWindow();
+            objSLAE.Closed += BisectionWindow_Closed;
+            this.Hide();
+            objSLAE.Show();
+        }
         private void BisectionWindow_Closed(object sender, EventArgs e)
         {
             this.Show(); 
