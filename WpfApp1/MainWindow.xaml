@@ -107,7 +107,7 @@
 
                     <Button Content="Метод дихотомии" 
                             Style="{StaticResource ModernButton}"
-                            Click="Button_Click"
+                            Click="Button_ClickDichotomy"
                             Margin="0,0,0,12"/>
 
                     <Button Content="Решение СЛАУ" 
