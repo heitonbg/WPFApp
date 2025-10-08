@@ -48,7 +48,6 @@ namespace WpfApp1
 
             try
             {
-                // Создаем колонки
                 for (int i = 0; i < matrixSize; i++)
                 {
                     var column = new DataGridTextColumn()
@@ -60,7 +59,6 @@ namespace WpfApp1
                     MatrixADataGrid.Columns.Add(column);
                 }
 
-                // Создаем строки и заполняем данные
                 for (int i = 0; i < matrixSize; i++)
                 {
                     var row = new double[matrixSize];
@@ -210,7 +208,6 @@ namespace WpfApp1
             return true;
         }
 
-        // МЕТОДЫ ИМПОРТА
         private void ImportFromExcel_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -325,18 +322,15 @@ namespace WpfApp1
                     return;
                 }
 
-                // Определяем размер матрицы
                 int detectedSize = DetectMatrixSizeFromCSV(lines);
 
                 if (detectedSize >= 2 && detectedSize <= MAX_MATRIX_SIZE)
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        // Сохраняем старый размер для проверки
                         int oldSize = matrixSize;
                         matrixSize = detectedSize;
 
-                        // Если размер изменился, пересоздаем DataGrid
                         if (oldSize != matrixSize)
                         {
                             UpdateMatrixSizeComboBox();
@@ -346,7 +340,6 @@ namespace WpfApp1
                         ShowStatus($"Импорт матрицы {matrixSize}x{matrixSize}...", false);
                     });
 
-                    // Импортируем данные
                     Dispatcher.Invoke(() =>
                     {
                         try
@@ -354,7 +347,6 @@ namespace WpfApp1
                             ImportMatrixAFromCSV(lines);
                             ImportVectorBFromCSV(lines);
 
-                            // Проверяем, что данные действительно импортировались
                             bool hasDataA = matrixAData.Any(row => row.Any(val => val != 0));
                             bool hasDataB = vectorBData.Any(row => row[0] != 0);
 
@@ -416,14 +408,12 @@ namespace WpfApp1
                     {
                         var values = line.Split(',');
 
-                        // Обновляем данные в коллекции matrixAData
                         if (rowIndex < matrixAData.Count)
                         {
                             var row = matrixAData[rowIndex];
                             for (int j = 0; j < matrixSize && j < values.Length; j++)
                             {
-                                // Пробуем распарсить с учетом разных разделителей
-                                string valueStr = values[j].Trim().Replace(',', '.'); // Заменяем запятую на точку
+                                string valueStr = values[j].Trim().Replace(',', '.'); 
                                 if (double.TryParse(valueStr,
                                     System.Globalization.NumberStyles.Any,
                                     System.Globalization.CultureInfo.InvariantCulture,
@@ -433,7 +423,6 @@ namespace WpfApp1
                                 }
                                 else
                                 {
-                                    // Если не число, оставляем 0
                                     row[j] = 0;
                                 }
                             }
@@ -442,8 +431,6 @@ namespace WpfApp1
                     }
                 }
             }
-
-            // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ DataGrid
             MatrixADataGrid.Items.Refresh();
         }
 
@@ -470,7 +457,6 @@ namespace WpfApp1
 
                     if (rowIndex < matrixSize)
                     {
-                        // Обновляем данные в коллекции vectorBData
                         if (rowIndex < vectorBData.Count)
                         {
                             if (double.TryParse(line.Trim(), out double value))
@@ -487,12 +473,10 @@ namespace WpfApp1
                 }
             }
 
-            // Если не нашли секцию с заголовком, пробуем импортировать строки после матрицы
             if (rowIndex == 0)
             {
-                // Ищем, где заканчивается матрица A
                 int vectorStart = FindMatrixAEnd(lines);
-                if (vectorStart == -1) vectorStart = matrixSize; // Если не нашли, берем после размера матрицы
+                if (vectorStart == -1) vectorStart = matrixSize; 
 
                 for (int i = 0; i < matrixSize && (vectorStart + i) < lines.Length; i++)
                 {
@@ -513,8 +497,6 @@ namespace WpfApp1
                     }
                 }
             }
-
-            // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ DataGrid
             VectorBDataGrid.Items.Refresh();
         }
 
@@ -524,25 +506,23 @@ namespace WpfApp1
             {
                 if (lines[i].ToLower().Contains("матрица a") || lines[i].ToLower().Contains("matrix a"))
                 {
-                    // Нашли начало матрицы A, ищем конец
                     for (int j = i + 1; j < lines.Length; j++)
                     {
                         if (string.IsNullOrEmpty(lines[j].Trim()) || lines[j].Trim().StartsWith("//"))
                         {
-                            return j + 1; // Возвращаем позицию после пустой строки
+                            return j + 1; 
                         }
                     }
-                    return i + matrixSize + 1; // Если нет пустой строки, берем после матрицы
+                    return i + matrixSize + 1; 
                 }
             }
-            return -1; // Не нашли матрицу A
+            return -1; 
         }
 
         private int DetectMatrixSizeFromCSV(string[] lines)
         {
             try
             {
-                // Сначала ищем явное указание матрицы A
                 for (int i = 0; i < lines.Length; i++)
                 {
                     if (lines[i].ToLower().Contains("матрица a") || lines[i].ToLower().Contains("matrix a"))
@@ -554,13 +534,11 @@ namespace WpfApp1
                         {
                             var line = lines[j].Trim();
 
-                            // Пустая строка или комментарий - конец матрицы
                             if (string.IsNullOrEmpty(line) || line.StartsWith("//"))
                                 break;
 
                             var values = line.Split(',');
 
-                            // Проверяем, что это строка с числами (минимум 2 числа для матрицы)
                             bool isMatrixRow = true;
                             int numbersCount = 0;
 
@@ -584,7 +562,6 @@ namespace WpfApp1
                             if (isMatrixRow && numbersCount >= 2)
                             {
                                 size++;
-                                // Размер матрицы = количество строк (и столбцов, так как матрица квадратная)
                             }
                             else
                             {
@@ -594,11 +571,10 @@ namespace WpfApp1
                             if (size >= MAX_MATRIX_SIZE)
                                 break;
                         }
-                        return size > 0 ? size : 2; // Минимум 2x2
+                        return size > 0 ? size : 2; 
                     }
                 }
 
-                // Если не нашли заголовок, анализируем данные как матрицу
                 int dataRows = 0;
                 int maxColumns = 0;
 
@@ -623,7 +599,6 @@ namespace WpfApp1
                         }
                     }
 
-                    // Считаем строкой матрицы, если есть хотя бы 2 числа
                     if (validNumbers >= 2)
                     {
                         dataRows++;
@@ -631,7 +606,6 @@ namespace WpfApp1
                     }
                     else
                     {
-                        // Если нашли строку с одним числом, возможно это вектор B
                         break;
                     }
 
@@ -639,13 +613,12 @@ namespace WpfApp1
                         break;
                 }
 
-                // Размер матрицы = минимальное из количества строк и столбцов (для квадратной матрицы)
                 int detectedSize = Math.Min(dataRows, maxColumns);
                 return detectedSize > 0 ? detectedSize : 2;
             }
             catch
             {
-                return 2; // По умолчанию 2x2
+                return 2; 
             }
         }
 
@@ -698,7 +671,6 @@ namespace WpfApp1
             }
         }
 
-        // МЕТОДЫ РЕШЕНИЯ СЛАУ
         private async void GaussMethod_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateInputs()) return;
@@ -895,11 +867,6 @@ namespace WpfApp1
         {
             int n = B.Length;
 
-            if (n > 10)
-            {
-                throw new Exception($"Метод Крамера не рекомендуется для матриц размером более 10x10. Текущий размер: {n}x{n}. Используйте метод Гаусса или Жордана-Гаусса.");
-            }
-
             double[] x = new double[n];
             double mainDet = Determinant(A);
 
@@ -1007,7 +974,6 @@ namespace WpfApp1
             {
                 var random = new Random();
 
-                // Генерируем матрицу A
                 for (int i = 0; i < matrixAData.Count; i++)
                 {
                     var row = matrixAData[i];
@@ -1018,7 +984,6 @@ namespace WpfApp1
                 }
                 MatrixADataGrid.Items.Refresh();
 
-                // Генерируем вектор B
                 for (int i = 0; i < vectorBData.Count; i++)
                 {
                     vectorBData[i][0] = Math.Round(random.NextDouble() * 20 - 10, 2);
@@ -1037,7 +1002,6 @@ namespace WpfApp1
         {
             try
             {
-                // Очищаем матрицу A
                 for (int i = 0; i < matrixAData.Count; i++)
                 {
                     var row = matrixAData[i];
@@ -1048,14 +1012,12 @@ namespace WpfApp1
                 }
                 MatrixADataGrid.Items.Refresh();
 
-                // Очищаем вектор B
                 for (int i = 0; i < vectorBData.Count; i++)
                 {
                     vectorBData[i][0] = 0;
                 }
                 VectorBDataGrid.Items.Refresh();
 
-                // Очищаем результаты
                 VectorXDataGrid?.Items.Clear();
                 ExecutionTimeTextBox.Text = "";
                 StatusBorder.Visibility = Visibility.Collapsed;
@@ -1082,14 +1044,12 @@ namespace WpfApp1
                 {
                     using (var writer = new StreamWriter(saveFileDialog.FileName, false, System.Text.Encoding.UTF8))
                     {
-                        // Используем инвариантную культуру для записи чисел с точкой
                         var invariantCulture = System.Globalization.CultureInfo.InvariantCulture;
 
                         writer.WriteLine("Матрица A");
                         for (int i = 0; i < matrixAData.Count; i++)
                         {
                             var row = matrixAData[i];
-                            // Форматируем каждое число с точкой как разделитель
                             var formattedRow = row.Select(val => val.ToString("0.######", invariantCulture));
                             writer.WriteLine(string.Join(",", formattedRow));
                         }
@@ -1112,16 +1072,10 @@ namespace WpfApp1
                             foreach (var item in VectorXDataGrid.Items)
                             {
                                 dynamic solution = item;
-                                // Форматируем значение с точкой
                                 string value = solution.Value.ToString("0.######", invariantCulture);
                                 writer.WriteLine($"{solution.Variable},{value}");
                             }
                         }
-
-                        // Добавляем комментарий о формате
-                        writer.WriteLine();
-                        writer.WriteLine("// Формат чисел: разделитель дробной части - точка");
-                        writer.WriteLine("// Кодировка: UTF-8");
                     }
 
                     ShowStatus($"Данные экспортированы в {saveFileDialog.FileName}", false);
