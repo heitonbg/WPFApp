@@ -117,7 +117,7 @@
 
                     <Button Content="Метод золотого сечения" 
                             Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
+							Click="Button_ClickGolden"
                             Margin="0,0,0,12"/>
 
                     <Button Content="Метод Ньютона" 

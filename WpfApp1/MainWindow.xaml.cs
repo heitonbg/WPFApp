@@ -34,6 +34,15 @@ namespace WpfApp1
             this.Hide();
             objBisectionMethod.Show();
         }
+
+        private void Button_ClickGolden(object sender, RoutedEventArgs e)
+        {
+            GoldenRatioWindow objGoldenRatio = new GoldenRatioWindow();
+            objGoldenRatio.Closed += BisectionWindow_Closed;
+            this.Hide();
+            objGoldenRatio.Show();
+        }
+
         private void Button_ClickSLAE(object sender, RoutedEventArgs e)
         {
             SLAEWindow objSLAE = new SLAEWindow();
