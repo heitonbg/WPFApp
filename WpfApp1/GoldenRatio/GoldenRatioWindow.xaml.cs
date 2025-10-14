@@ -50,6 +50,24 @@ namespace WpfApp1
 
                 function = PreprocessFunction(function);
 
+                if (function.ToLower().Contains("sin") || function.ToLower().Contains("cos"))
+                {
+                    MessageBox.Show("При больших интервалах на графике может быть несколько минимумов, выведется только один минимум, если вам необходим определенный минимум попробуйте уменьшить интервал",
+                        "Попробуйте уменьшить интервал", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                if (function.ToLower().Contains("tan"))
+                {
+                    MessageBox.Show("У тангенса происходит разрыв графика, график будет изображен неправильно",
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                if (function.ToLower().Contains("/x"))
+                {
+                    MessageBox.Show("Происходит разрыва графика при */x, график отображается некорректно",
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
                 if (function.ToLower().Contains("log") || function.ToLower().Contains("log10"))
                 {
                     if (a <= 0)

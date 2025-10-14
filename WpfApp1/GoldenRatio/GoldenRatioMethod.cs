@@ -179,11 +179,6 @@ namespace WpfApp1
 
         public GoldenRatioResult FindGlobalMinimum(double a, double b, double epsilon)
         {
-            if (IsLikelyUnimodal(a, b))
-            {
-                return FindMinimum(a, b, epsilon);
-            }
-
             int gridPoints = 10;
             double step = (b - a) / gridPoints;
 
@@ -209,24 +204,6 @@ namespace WpfApp1
             }
 
             return bestResult ?? FindMinimum(a, b, epsilon);
-        }
-
-        private bool IsLikelyUnimodal(double a, double b)
-        {
-            string func = _expression.ParsedExpression.ToString().ToLower();
-
-            if (func.Contains("x^2") || func.Contains("pow(x,2)"))
-                return true;
-            if (func.Contains("x^3") || func.Contains("pow(x,3)"))
-                return (b - a) < 5; 
-
-            if (func.Contains("exp") || func.Contains("log"))
-                return true;
-
-            if (func.Contains("sin") || func.Contains("cos") || func.Contains("tan"))
-                return false;
-
-            return true;
         }
 
         public bool IsConstantFunction(double a, double b)
