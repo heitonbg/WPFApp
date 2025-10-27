@@ -50,6 +50,15 @@ namespace WpfApp1
             this.Hide();
             objSLAE.Show();
         }
+
+        private void Button_ClickNewton(object sender, RoutedEventArgs e)
+        {
+            NewtonMethodWindow objSLAE = new NewtonMethodWindow();
+            objSLAE.Closed += BisectionWindow_Closed;
+            this.Hide();
+            objSLAE.Show();
+        }
+
         private void BisectionWindow_Closed(object sender, EventArgs e)
         {
             this.Show(); 

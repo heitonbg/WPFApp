@@ -122,7 +122,7 @@
 
                     <Button Content="Метод Ньютона" 
                             Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
+							Click="Button_ClickNewton"
                             Margin="0,0,0,12"/>
                 </StackPanel>
 
