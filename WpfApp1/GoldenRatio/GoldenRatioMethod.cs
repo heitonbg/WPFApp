@@ -165,19 +165,78 @@ namespace WpfApp1
                 }
             }
 
-            double minimumPoint = (a + b) / 2;
-            double minimumValue = CalculateFunction(minimumPoint);
+            double extremumPoint = (a + b) / 2;
+            double extremumValue = CalculateFunction(extremumPoint);
 
             return new GoldenRatioResult
             {
-                MinimumPoint = minimumPoint,
-                MinimumValue = minimumValue,
+                ExtremumPoint = extremumPoint,
+                ExtremumValue = extremumValue,
                 Iterations = IterationsCount,
                 FinalInterval = (a, b)
             };
         }
 
-        public GoldenRatioResult FindGlobalMinimum(double a, double b, double epsilon)
+        public GoldenRatioResult FindMaximum(double a, double b, double epsilon)
+        {
+            if (a >= b)
+            {
+                throw new ArgumentException("Интервал [a, b] задан неверно");
+            }
+
+            if (epsilon <= 0)
+            {
+                throw new ArgumentException("Точность epsilon должна быть положительной");
+            }
+
+            IterationsCount = 0;
+
+            double x1 = b - (b - a) / GoldenRatio;
+            double x2 = a + (b - a) / GoldenRatio;
+
+            double f1 = CalculateFunction(x1);
+            double f2 = CalculateFunction(x2);
+
+            while (Math.Abs(b - a) > epsilon)
+            {
+                IterationsCount++;
+
+                if (f1 <= f2)  // Изменено условие для поиска максимума
+                {
+                    a = x1;
+                    x1 = x2;
+                    f1 = f2;
+                    x2 = a + (b - a) / GoldenRatio;
+                    f2 = CalculateFunction(x2);
+                }
+                else
+                {
+                    b = x2;
+                    x2 = x1;
+                    f2 = f1;
+                    x1 = b - (b - a) / GoldenRatio;
+                    f1 = CalculateFunction(x1);
+                }
+
+                if (IterationsCount > 1000)
+                {
+                    break;
+                }
+            }
+
+            double extremumPoint = (a + b) / 2;
+            double extremumValue = CalculateFunction(extremumPoint);
+
+            return new GoldenRatioResult
+            {
+                ExtremumPoint = extremumPoint,
+                ExtremumValue = extremumValue,
+                Iterations = IterationsCount,
+                FinalInterval = (a, b)
+            };
+        }
+
+        public GoldenRatioResult FindGlobalExtremum(double a, double b, double epsilon, bool findMinimum = true)
         {
             int gridPoints = 10;
             double step = (b - a) / gridPoints;
@@ -191,19 +250,24 @@ namespace WpfApp1
 
                 try
                 {
-                    var localResult = FindMinimum(startA, startB, epsilon);
+                    var localResult = findMinimum ?
+                        FindMinimum(startA, startB, epsilon) :
+                        FindMaximum(startA, startB, epsilon);
 
-                    if (bestResult == null || localResult.MinimumValue < bestResult.MinimumValue)
+                    if (bestResult == null ||
+                        (findMinimum && localResult.ExtremumValue < bestResult.ExtremumValue) ||
+                        (!findMinimum && localResult.ExtremumValue > bestResult.ExtremumValue))
                     {
                         bestResult = localResult;
                     }
                 }
                 catch
                 {
+                    // Игнорируем интервалы, где функция не определена
                 }
             }
 
-            return bestResult ?? FindMinimum(a, b, epsilon);
+            return bestResult ?? (findMinimum ? FindMinimum(a, b, epsilon) : FindMaximum(a, b, epsilon));
         }
 
         public bool IsConstantFunction(double a, double b)
@@ -224,8 +288,8 @@ namespace WpfApp1
 
     public class GoldenRatioResult
     {
-        public double MinimumPoint { get; set; }
-        public double MinimumValue { get; set; }
+        public double ExtremumPoint { get; set; }
+        public double ExtremumValue { get; set; }
         public int Iterations { get; set; }
         public (double a, double b) FinalInterval { get; set; }
     }

@@ -30,7 +30,7 @@ namespace WpfApp1
         private void Button_ClickDichotomy(object sender, RoutedEventArgs e)
         {
             BisectionMethodWindow objBisectionMethod = new BisectionMethodWindow();
-            objBisectionMethod.Closed += BisectionWindow_Closed;
+            objBisectionMethod.Closed += Window_Closed;
             this.Hide();
             objBisectionMethod.Show();
         }
@@ -38,7 +38,7 @@ namespace WpfApp1
         private void Button_ClickGolden(object sender, RoutedEventArgs e)
         {
             GoldenRatioWindow objGoldenRatio = new GoldenRatioWindow();
-            objGoldenRatio.Closed += BisectionWindow_Closed;
+            objGoldenRatio.Closed += Window_Closed;
             this.Hide();
             objGoldenRatio.Show();
         }
@@ -46,7 +46,7 @@ namespace WpfApp1
         private void Button_ClickSLAE(object sender, RoutedEventArgs e)
         {
             SLAEWindow objSLAE = new SLAEWindow();
-            objSLAE.Closed += BisectionWindow_Closed;
+            objSLAE.Closed += Window_Closed;
             this.Hide();
             objSLAE.Show();
         }
@@ -54,12 +54,12 @@ namespace WpfApp1
         private void Button_ClickNewton(object sender, RoutedEventArgs e)
         {
             NewtonMethodWindow objSLAE = new NewtonMethodWindow();
-            objSLAE.Closed += BisectionWindow_Closed;
+            objSLAE.Closed += Window_Closed;
             this.Hide();
             objSLAE.Show();
         }
 
-        private void BisectionWindow_Closed(object sender, EventArgs e)
+        private void Window_Closed(object sender, EventArgs e)
         {
             this.Show(); 
         }

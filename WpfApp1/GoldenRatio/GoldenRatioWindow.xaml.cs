@@ -4,28 +4,55 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
-using LiveCharts;
-using LiveCharts.Wpf;
-using LiveCharts.Defaults;
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.Axes;
 
 namespace WpfApp1
 {
     public partial class GoldenRatioWindow : Window
     {
-        public SeriesCollection SeriesCollection { get; set; }
-        public ChartValues<ObservablePoint> FunctionValues { get; set; }
-        public ChartValues<ObservablePoint> MinimumPoints { get; set; }
+        public PlotModel PlotModel { get; set; }
+        private List<DataPoint> _functionPoints;
+        private List<DataPoint> _extremumPoints;
 
         private MainWindow _mainWindow;
+        private bool _findMinimum = true;
 
         public GoldenRatioWindow()
         {
             InitializeComponent();
+            PlotModel = new PlotModel
+            {
+                Title = "График функции",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            };
+            _functionPoints = new List<DataPoint>();
+            _extremumPoints = new List<DataPoint>();
+
+            // Настройка осей
+            PlotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Bottom,
+                Title = "x",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            });
+            PlotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Title = "f(x)",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            });
+
             DataContext = this;
-
-            FunctionValues = new ChartValues<ObservablePoint>();
-            MinimumPoints = new ChartValues<ObservablePoint>();
-
             this.Closing += Window_Closing;
         }
 
@@ -47,24 +74,25 @@ namespace WpfApp1
                 double b = double.Parse(txtB.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 string function = txtFunction.Text;
+                _findMinimum = cmbExtremumType.SelectedIndex == 0;
 
                 function = PreprocessFunction(function);
 
                 if (function.ToLower().Contains("sin") || function.ToLower().Contains("cos"))
                 {
-                    MessageBox.Show("При больших интервалах на графике может быть несколько минимумов, выведется только один минимум, если вам необходим определенный минимум попробуйте уменьшить интервал",
+                    MessageBox.Show("При больших интервалах на графике может быть несколько экстремумов, выведется только один экстремум, если вам необходим определенный экстремум попробуйте уменьшить интервал",
                         "Попробуйте уменьшить интервал", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
                 if (function.ToLower().Contains("tan"))
                 {
-                    MessageBox.Show("У тангенса происходит разрыв графика, график будет изображен неправильно",
+                    MessageBox.Show("У тангенса происходит разрыв графика, график будет изображен с учетом разрывов",
                         "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
                 if (function.ToLower().Contains("/x"))
                 {
-                    MessageBox.Show("Происходит разрыва графика при */x, график отображается некорректно",
+                    MessageBox.Show("Происходит разрыв графика при */x, график отображается с учетом разрывов",
                         "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
@@ -107,12 +135,14 @@ namespace WpfApp1
                                   MessageBoxImage.Information);
                 }
 
-                GoldenRatioResult result = method.FindMinimum(a, b, epsilon);
+                GoldenRatioResult result = _findMinimum ?
+                    method.FindMinimum(a, b, epsilon) :
+                    method.FindMaximum(a, b, epsilon);
 
-                lblResult.Text = $"Точка минимума: x = {result.MinimumPoint:F6}";
-                lblIterations.Text = $"Количество итераций: {result.Iterations}";
+                string extremumType = _findMinimum ? "минимума" : "максимума";
+                lblResult.Text = $"Точка {extremumType}: x = {result.ExtremumPoint:F6}";
 
-                PlotGraphWithMinimum(a, b, result, method);
+                PlotGraphWithExtremum(a, b, result, method);
 
             }
             catch (Exception ex)
@@ -121,33 +151,99 @@ namespace WpfApp1
             }
         }
 
-        private void PlotGraphWithMinimum(double a, double b, GoldenRatioResult result, GoldenRatioMethod method)
+        private void PlotGraphWithExtremum(double a, double b, GoldenRatioResult result, GoldenRatioMethod method)
         {
-            FunctionValues.Clear();
-            MinimumPoints.Clear();
+            PlotModel.Series.Clear();
+            _functionPoints.Clear();
+            _extremumPoints.Clear();
 
-            int pointsCount = 300;
+            int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            for (double x = a; x <= b; x += step)
+            // Для обработки разрывов создаем отдельные сегменты
+            List<List<DataPoint>> segments = new List<List<DataPoint>>();
+            List<DataPoint> currentSegment = new List<DataPoint>();
+
+            for (int i = 0; i <= pointsCount; i++)
             {
+                double x = a + i * step;
                 try
                 {
                     double y = method.CalculateFunction(x);
-                    FunctionValues.Add(new ObservablePoint(x, y));
+
+                    // Проверяем на разрыв (большие скачки значений или NaN/Infinity)
+                    if (currentSegment.Count > 0)
+                    {
+                        double lastY = currentSegment.Last().Y;
+                        double diff = Math.Abs(y - lastY);
+
+                        // Если разрыв слишком большой или значение некорректное - начинаем новый сегмент
+                        if (double.IsNaN(y) || double.IsInfinity(y) ||
+                            (diff > Math.Abs(lastY) * 100 && diff > 1000))
+                        {
+                            // Завершаем текущий сегмент если в нем достаточно точек
+                            if (currentSegment.Count > 1)
+                            {
+                                segments.Add(new List<DataPoint>(currentSegment));
+                            }
+                            currentSegment.Clear();
+                            continue; // Пропускаем точку с разрывом
+                        }
+                    }
+
+                    currentSegment.Add(new DataPoint(x, y));
                 }
                 catch
                 {
+                    // При ошибке вычисления завершаем текущий сегмент
+                    if (currentSegment.Count > 1)
+                    {
+                        segments.Add(new List<DataPoint>(currentSegment));
+                    }
+                    currentSegment.Clear();
                 }
             }
 
-            try
+            // Добавляем последний сегмент
+            if (currentSegment.Count > 1)
             {
-                MinimumPoints.Add(new ObservablePoint(result.MinimumPoint, result.MinimumValue));
+                segments.Add(new List<DataPoint>(currentSegment));
             }
-            catch
+
+            // Добавляем все сегменты на график
+            int segmentNumber = 0;
+            foreach (var segment in segments)
             {
+                LineSeries segmentSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    StrokeThickness = 2,
+                    Title = segmentNumber == 0 ? "Функция" : null // Название только у первого сегмента
+                };
+
+                foreach (var point in segment)
+                {
+                    segmentSeries.Points.Add(point);
+                }
+
+                PlotModel.Series.Add(segmentSeries);
+                segmentNumber++;
             }
+
+            // Добавляем точку экстремума
+            ScatterSeries extremumSeries = new ScatterSeries
+            {
+                Title = _findMinimum ? "Минимум" : "Максимум",
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 8,
+                MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
+                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                MarkerStrokeThickness = 2
+            };
+            extremumSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
+            PlotModel.Series.Add(extremumSeries);
+
+            PlotModel.InvalidatePlot(true);
         }
 
         private bool ValidateInput()
@@ -213,11 +309,11 @@ namespace WpfApp1
             txtA.Text = "-2";
             txtB.Text = "2";
             txtEpsilon.Text = "0,001";
-            txtFunction.Text = "x^2";
-            lblResult.Text = "Точка минимума: ";
-            lblIterations.Text = "Количество итераций: ";
-            FunctionValues.Clear();
-            MinimumPoints.Clear();
+            txtFunction.Text = "pow(x,2)";
+            cmbExtremumType.SelectedIndex = 0;
+            lblResult.Text = "Точка экстремума: ";
+            PlotModel.Series.Clear();
+            PlotModel.InvalidatePlot(true);
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)
@@ -227,15 +323,7 @@ namespace WpfApp1
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (chart != null)
-            {
-                chart.Series.Clear();
-                chart = null;
-            }
-
-            FunctionValues?.Clear();
-            MinimumPoints?.Clear();
-            SeriesCollection?.Clear();
+            PlotModel?.Series.Clear();
         }
 
         private string PreprocessFunction(string function)
@@ -255,6 +343,11 @@ namespace WpfApp1
             result = result.Replace("|SEPARATOR|", ",");
 
             return result;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            cmbExtremumType.SelectedIndex = 0;
         }
     }
 }

@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         Title="Метод золотого сечения"
         Height="700" Width="1000"
         WindowStartupLocation="CenterScreen"
         Closing="Window_Closing"
+        Loaded="Window_Loaded"
         FontFamily="Segoe UI">
 
 	<Window.Resources>
@@ -74,17 +75,39 @@
 
 		<Style x:Key="TextBoxStyle" TargetType="TextBox">
 			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="BorderBrush" Value="#CCCCCC"/>
+			<Setter Property="BorderBrush" Value="#2C5F9E"/>
 			<Setter Property="Background" Value="#FFFFFF"/>
-			<Setter Property="Foreground" Value="#333333"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
 			<Setter Property="Padding" Value="8,4"/>
 			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="SelectionBrush" Value="#2C5F9E40"/>
 		</Style>
 
 		<Style x:Key="LabelStyle" TargetType="Label">
 			<Setter Property="Foreground" Value="#2C5F9E"/>
 			<Setter Property="FontWeight" Value="SemiBold"/>
 			<Setter Property="FontSize" Value="13"/>
+		</Style>
+
+		<Style x:Key="ComboBoxStyle" TargetType="ComboBox">
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#2C5F9E"/>
+			<Setter Property="Background" Value="#FFFFFF"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="Padding" Value="8,4"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="Height" Value="32"/>
+		</Style>
+
+		<Style x:Key="MenuStyle" TargetType="Menu">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+		</Style>
+
+		<Style x:Key="MenuItemStyle" TargetType="MenuItem">
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Background" Value="White"/>
 		</Style>
 	</Window.Resources>
 
@@ -109,12 +132,12 @@
 			</Grid.RowDefinitions>
 
 			<!-- Menu -->
-			<Menu Grid.Row="0" Background="Transparent">
-				<MenuItem Header="Файл" Foreground="#2C5F9E" FontWeight="SemiBold">
-					<MenuItem Header="Найти минимум" Click="Calculate_Click"/>
-					<MenuItem Header="Очистить" Click="Clear_Click"/>
+			<Menu Grid.Row="0" Background="Transparent" Style="{StaticResource MenuStyle}">
+				<MenuItem Header="Файл" Style="{StaticResource MenuItemStyle}">
+					<MenuItem Header="Найти экстремум" Click="Calculate_Click" Style="{StaticResource MenuItemStyle}"/>
+					<MenuItem Header="Очистить" Click="Clear_Click" Style="{StaticResource MenuItemStyle}"/>
 					<Separator/>
-					<MenuItem Header="Выход" Click="Exit_Click"/>
+					<MenuItem Header="Выход" Click="Exit_Click" Style="{StaticResource MenuItemStyle}"/>
 				</MenuItem>
 			</Menu>
 
@@ -125,10 +148,10 @@
                           FontWeight="Light"
                           Foreground="#2C5F9E"
                           HorizontalAlignment="Center"/>
-				<TextBlock Text="Поиск минимума функции"
+				<TextBlock Text="Поиск экстремума функции"
                           FontSize="14"
                           FontWeight="Normal"
-                          Foreground="#666666"
+                          Foreground="#2C5F9E"
                           HorizontalAlignment="Center"
                           Margin="0,5,0,0"/>
 			</StackPanel>
@@ -142,6 +165,7 @@
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
 					</Grid.RowDefinitions>
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="Auto"/>
@@ -149,20 +173,26 @@
 						<ColumnDefinition Width="Auto"/>
 					</Grid.ColumnDefinitions>
 
-					<Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
-					<TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
-                             Text="x^2" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
+					<Label Grid.Row="0" Grid.Column="0" Content="Тип экстремума:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<ComboBox Grid.Row="0" Grid.Column="1" Name="cmbExtremumType" Style="{StaticResource ComboBoxStyle}">
+						<ComboBoxItem Content="Минимум" Foreground="#2C5F9E"/>
+						<ComboBoxItem Content="Максимум" Foreground="#2C5F9E"/>
+					</ComboBox>
 
-					<Label Grid.Row="1" Grid.Column="0" Content="Начало интервала a:" Style="{StaticResource LabelStyle}" Margin="5"/>
-					<TextBox Grid.Row="1" Grid.Column="1" Name="txtA" Style="{StaticResource TextBoxStyle}" Text="-2"/>
+					<Label Grid.Row="1" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="1" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
+                             Text="pow(x,2)" ToolTip="Введите математическое выражение функции. Примеры: pow(x,2), sin(x), exp(x)"/>
 
-					<Label Grid.Row="2" Grid.Column="0" Content="Конец интервала b:" Style="{StaticResource LabelStyle}" Margin="5"/>
-					<TextBox Grid.Row="2" Grid.Column="1" Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2"/>
+					<Label Grid.Row="2" Grid.Column="0" Content="Начало интервала a:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="2" Grid.Column="1" Name="txtA" Style="{StaticResource TextBoxStyle}" Text="-2"/>
 
-					<Label Grid.Row="3" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
-					<TextBox Grid.Row="3" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
+					<Label Grid.Row="3" Grid.Column="0" Content="Конец интервала b:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="3" Grid.Column="1" Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2"/>
 
-					<Button Grid.Row="4" Grid.Column="1" Name="btnCalculate" Content="Найти минимум"
+					<Label Grid.Row="4" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="4" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
+
+					<Button Grid.Row="5" Grid.Column="1" Name="btnCalculate" Content="Найти экстремум"
                             Style="{StaticResource ModernButton}" HorizontalAlignment="Right" Width="140" Click="Calculate_Click"/>
 				</Grid>
 			</GroupBox>
@@ -181,32 +211,16 @@
 
 					<!-- Results -->
 					<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
-						<TextBlock Name="lblResult" Text="Точка минимума: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
-						<TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
-						<TextBlock Name="lblGoldenRatio" Text="Золотое сечение: 1,618" FontWeight="Normal" Foreground="#666666" FontSize="12"/>
+						<TextBlock Name="lblResult" Text="Точка экстремума: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
 					</StackPanel>
 
 					<!-- Chart -->
-					<Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderThickness="1" BorderBrush="#E0E0E0"
+					<Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderThickness="1" BorderBrush="#2C5F9E"
                             Background="#FFFFFF" CornerRadius="4" Padding="10" Margin="0,0,0,0"
-                            Height="250" VerticalAlignment="Stretch">
-						<lvc:CartesianChart Name="chart" LegendLocation="Right"
-                                          Height="230" MinWidth="600"
-                                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-							<lvc:CartesianChart.Series>
-								<lvc:LineSeries Title="Функция" Values="{Binding FunctionValues}"
-                                              PointGeometry="{x:Null}" LineSmoothness="0" Stroke="#2C5F9E" StrokeThickness="2"/>
-								<lvc:ScatterSeries Title="Минимум" Values="{Binding MinimumPoints}"
-                                                 PointGeometry="{x:Static lvc:DefaultGeometries.Circle}"
-                                                 Stroke="#FF6B8E" Fill="#FF6B8E" StrokeThickness="3"/>
-							</lvc:CartesianChart.Series>
-							<lvc:CartesianChart.AxisX>
-								<lvc:Axis Title="x" Foreground="#2C5F9E" FontSize="12"/>
-							</lvc:CartesianChart.AxisX>
-							<lvc:CartesianChart.AxisY>
-								<lvc:Axis Title="f(x)" Foreground="#2C5F9E" FontSize="12"/>
-							</lvc:CartesianChart.AxisY>
-						</lvc:CartesianChart>
+                            Height="300" VerticalAlignment="Stretch">
+						<oxy:PlotView Name="plotView" Model="{Binding PlotModel}"
+                                    Height="280"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 					</Border>
 				</Grid>
 			</GroupBox>
