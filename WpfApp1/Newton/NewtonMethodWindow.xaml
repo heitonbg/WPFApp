@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         Title="Метод Ньютона"
         Height="700" Width="1000"
@@ -11,240 +11,223 @@
         Closing="Window_Closing"
         FontFamily="Segoe UI">
 
-    <Window.Resources>
-        <Style x:Key="ModernButton" TargetType="Button">
-            <Setter Property="Background" Value="#2C5F9E"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border"
+	<Window.Resources>
+		<Style x:Key="ModernButton" TargetType="Button">
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Height" Value="32"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Border x:Name="border"
                                 CornerRadius="6"
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter x:Name="contentPresenter"
+							<ContentPresenter x:Name="contentPresenter"
                                             ContentTemplate="{TemplateBinding ContentTemplate}"
                                             Content="{TemplateBinding Content}"
                                             ContentStringFormat="{TemplateBinding ContentStringFormat}"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Margin="10,5"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3A6DB0"/>
-                                <Setter TargetName="border" Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#30000000"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1E4A7A"/>
-                                <Setter TargetName="border" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#B0B0B0"/>
-                                <Setter TargetName="border" Property="Opacity" Value="0.6"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#3A6DB0"/>
+								<Setter TargetName="border" Property="Effect">
+									<Setter.Value>
+										<DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#30000000"/>
+									</Setter.Value>
+								</Setter>
+							</Trigger>
+							<Trigger Property="IsPressed" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#1E4A7A"/>
+								<Setter TargetName="border" Property="RenderTransform">
+									<Setter.Value>
+										<ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+									</Setter.Value>
+								</Setter>
+							</Trigger>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter TargetName="border" Property="Background" Value="#B0B0B0"/>
+								<Setter TargetName="border" Property="Opacity" Value="0.6"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 
-        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#2C5F9E"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#2C5F9E"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="Margin" Value="10"/>
-        </Style>
+		<Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#2C5F9E"/>
+			<Setter Property="Background" Value="#FFFFFF"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Padding" Value="10"/>
+			<Setter Property="Margin" Value="10"/>
+		</Style>
 
-        <Style x:Key="TextBoxStyle" TargetType="TextBox">
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#CCCCCC"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#333333"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
+		<Style x:Key="TextBoxStyle" TargetType="TextBox">
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#CCCCCC"/>
+			<Setter Property="Background" Value="#FFFFFF"/>
+			<Setter Property="Foreground" Value="#333333"/>
+			<Setter Property="Padding" Value="8,4"/>
+			<Setter Property="FontSize" Value="13"/>
+		</Style>
 
-        <Style x:Key="LabelStyle" TargetType="Label">
-            <Setter Property="Foreground" Value="#2C5F9E"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-    </Window.Resources>
+		<Style x:Key="LabelStyle" TargetType="Label">
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="FontSize" Value="13"/>
+		</Style>
+	</Window.Resources>
 
-    <Window.Background>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#f0f5fc" Offset="0.0" />
-            <GradientStop Color="#e8eff8" Offset="0.4" />
-            <GradientStop Color="#dde6f2" Offset="1.0" />
-        </LinearGradientBrush>
-    </Window.Background>
+	<Window.Background>
+		<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+			<GradientStop Color="#f0f5fc" Offset="0.0" />
+			<GradientStop Color="#e8eff8" Offset="0.4" />
+			<GradientStop Color="#dde6f2" Offset="1.0" />
+		</LinearGradientBrush>
+	</Window.Background>
 
-    <Grid>
-        <Ellipse Width="200" Height="200" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-60,-60"/>
-        <Ellipse Width="150" Height="150" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-40,-40"/>
+	<Grid>
+		<Ellipse Width="200" Height="200" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-60,-60"/>
+		<Ellipse Width="150" Height="150" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-40,-40"/>
 
-        <Grid Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+		<Grid Margin="20">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+			</Grid.RowDefinitions>
 
-            <!-- Menu -->
-            <Menu Grid.Row="0" Background="Transparent">
-                <MenuItem Header="Файл" Foreground="#2C5F9E" FontWeight="SemiBold">
-                    <MenuItem Header="Найти минимум" Click="Calculate_Click"/>
-                    <MenuItem Header="Пошаговый просмотр" Click="StepByStep_Click"/>
-                    <MenuItem Header="Очистить" Click="Clear_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Выход" Click="Exit_Click"/>
-                </MenuItem>
-            </Menu>
+			<!-- Menu -->
+			<Menu Grid.Row="0" Background="Transparent">
+				<MenuItem Header="Файл" Foreground="#2C5F9E" FontWeight="SemiBold">
+					<MenuItem Header="Найти минимум" Click="Calculate_Click"/>
+					<MenuItem Header="Пошаговый просмотр" Click="StepByStep_Click"/>
+					<MenuItem Header="Очистить" Click="Clear_Click"/>
+					<Separator/>
+					<MenuItem Header="Выход" Click="Exit_Click"/>
+				</MenuItem>
+			</Menu>
 
-            <!-- Header -->
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,0,0,15">
-                <TextBlock Text="Метод Ньютона"
+			<!-- Header -->
+			<StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,0,0,15">
+				<TextBlock Text="Метод Ньютона"
                           FontSize="28"
                           FontWeight="Light"
                           Foreground="#2C5F9E"
                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Поиск минимума функции с использованием производных"
+				<TextBlock Text="Поиск минимума функции с использованием производных"
                           FontSize="14"
                           FontWeight="Normal"
                           Foreground="#666666"
                           HorizontalAlignment="Center"
                           Margin="0,5,0,0"/>
-            </StackPanel>
+			</StackPanel>
 
-            <!-- Input parameters -->
-            <GroupBox Grid.Row="2" Header="Параметры расчета" Style="{StaticResource GroupBoxStyle}" Margin="0,0,0,10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+			<!-- Input parameters -->
+			<GroupBox Grid.Row="2" Header="Параметры расчета" Style="{StaticResource GroupBoxStyle}" Margin="0,0,0,10">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto"/>
+					</Grid.RowDefinitions>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto"/>
+						<ColumnDefinition Width="*"/>
+						<ColumnDefinition Width="Auto"/>
+					</Grid.ColumnDefinitions>
 
-                    <Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
-                    <TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
+					<Label Grid.Row="0" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="0" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
                              Text="x^2" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x)"/>
 
-                    <Label Grid.Row="1" Grid.Column="0" Content="Начальная точка x0:" Style="{StaticResource LabelStyle}" Margin="5"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Name="txtX0" Style="{StaticResource TextBoxStyle}" Text="1"/>
+					<Label Grid.Row="1" Grid.Column="0" Content="Начальная точка x0:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="1" Grid.Column="1" Name="txtX0" Style="{StaticResource TextBoxStyle}" Text="1"/>
 
-                    <Label Grid.Row="2" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
-                    <TextBox Grid.Row="2" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
+					<Label Grid.Row="2" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="2" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
 
-                    <Label Grid.Row="3" Grid.Column="0" Content="Макс. итераций:" Style="{StaticResource LabelStyle}" Margin="5"/>
-                    <TextBox Grid.Row="3" Grid.Column="1" Name="txtMaxIterations" Style="{StaticResource TextBoxStyle}" Text="100"/>
+					<Label Grid.Row="3" Grid.Column="0" Content="Макс. итераций:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<TextBox Grid.Row="3" Grid.Column="1" Name="txtMaxIterations" Style="{StaticResource TextBoxStyle}" Text="100"/>
 
-                    <Label Grid.Row="4" Grid.Column="0" Content="Интервал графика [a,b]:" Style="{StaticResource LabelStyle}" Margin="5"/>
-                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
-                        <TextBox Name="txtA" Style="{StaticResource TextBoxStyle}" Text="-2" Width="80" Margin="0,0,10,0"/>
-                        <TextBlock Text="до" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#666666"/>
-                        <TextBox Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2" Width="80"/>
-                    </StackPanel>
+					<Label Grid.Row="4" Grid.Column="0" Content="Интервал графика [a,b]:" Style="{StaticResource LabelStyle}" Margin="5"/>
+					<StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
+						<TextBox Name="txtA" Style="{StaticResource TextBoxStyle}" Text="-2" Width="80" Margin="0,0,10,0"/>
+						<TextBlock Text="до" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#666666"/>
+						<TextBox Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2" Width="80"/>
+					</StackPanel>
 
-                    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="btnAutoStart" Content="Автоподбор x0" 
-                                Style="{StaticResource ModernButton}" Width="120" 
+					<StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+						<Button Name="btnAutoStart" Content="Автоподбор x0"
+                                Style="{StaticResource ModernButton}" Width="120"
                                 Click="AutoFindStartingPoint_Click" Background="#28a745"
                                 Margin="0,0,10,0"/>
-                        <Button Name="btnStepByStep" Content="Пошаговый просмотр"
+						<Button Name="btnStepByStep" Content="Пошаговый просмотр"
                                 Style="{StaticResource ModernButton}" Width="150" Margin="0,0,10,0" Click="StepByStep_Click"/>
-                        <Button Name="btnCalculate" Content="Найти минимум"
+						<Button Name="btnCalculate" Content="Найти минимум"
                                 Style="{StaticResource ModernButton}" Width="140" Click="Calculate_Click"/>
-                    </StackPanel>
-                </Grid>
-            </GroupBox>
+					</StackPanel>
+				</Grid>
+			</GroupBox>
 
-            <!-- Results and Chart -->
-            <GroupBox Grid.Row="3" Header="Результаты расчета" Style="{StaticResource GroupBoxStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="300"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+			<!-- Results and Chart -->
+			<GroupBox Grid.Row="3" Header="Результаты расчета" Style="{StaticResource GroupBoxStyle}">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="*"/>
+					</Grid.RowDefinitions>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="300"/>
+						<ColumnDefinition Width="*"/>
+					</Grid.ColumnDefinitions>
 
-                    <!-- Results -->
-                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
-                        <TextBlock Name="lblResult" Text="Точка минимума: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
-                        <TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
-                        <TextBlock Name="lblFunctionValue" Text="Значение функции: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
-                        <TextBlock Name="lblDerivative" Text="Производная в точке: " FontWeight="Normal" Foreground="#666666" FontSize="12"/>
-                        <TextBlock Text="Метод Ньютона: xₙ₊₁ = xₙ - f'(xₙ)/f''(xₙ)" FontWeight="Normal" Foreground="#666666" FontSize="11" Margin="0,10,0,0"/>
-                    </StackPanel>
+					<!-- Results -->
+					<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
+						<TextBlock Name="lblResult" Text="Точка минимума: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblIterations" Text="Количество итераций: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblFunctionValue" Text="Значение функции: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblDerivative" Text="Производная в точке: " FontWeight="Normal" Foreground="#666666" FontSize="12"/>
+						<TextBlock Text="Метод Ньютона: xₙ₊₁ = xₙ - f'(xₙ)/f''(xₙ)" FontWeight="Normal" Foreground="#666666" FontSize="11" Margin="0,10,0,0"/>
+					</StackPanel>
 
-                    <!-- Chart -->
-                    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderThickness="1" BorderBrush="#E0E0E0"
+					<!-- Chart -->
+					<Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderThickness="1" BorderBrush="#2C5F9E"
                             Background="#FFFFFF" CornerRadius="4" Padding="10" Margin="0,0,0,0"
                             Height="250" VerticalAlignment="Stretch">
-                        <lvc:CartesianChart Name="chart" LegendLocation="Right"
-                                          Height="230" MinWidth="600"
-                                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                            <lvc:CartesianChart.Series>
-                                <lvc:LineSeries Title="Функция" Values="{Binding FunctionValues}"
-                                              PointGeometry="{x:Null}" LineSmoothness="0" Stroke="#2C5F9E" StrokeThickness="2"/>
-                                <lvc:ScatterSeries Title="Минимум" Values="{Binding MinimumPoints}"
-                                                 PointGeometry="{x:Static lvc:DefaultGeometries.Circle}"
-                                                 Stroke="#FF6B8E" Fill="#FF6B8E" StrokeThickness="3"/>
-                                <lvc:ScatterSeries Title="Итерации" Values="{Binding IterationPoints}"
-                                                 PointGeometry="{x:Static lvc:DefaultGeometries.Triangle}"
-                                                 Stroke="#32CD32" Fill="#32CD32" StrokeThickness="2"/>
-                            </lvc:CartesianChart.Series>
-                            <lvc:CartesianChart.AxisX>
-                                <lvc:Axis Title="x" Foreground="#2C5F9E" FontSize="12"/>
-                            </lvc:CartesianChart.AxisX>
-                            <lvc:CartesianChart.AxisY>
-                                <lvc:Axis Title="f(x)" Foreground="#2C5F9E" FontSize="12"/>
-                            </lvc:CartesianChart.AxisY>
-                        </lvc:CartesianChart>
-                    </Border>
+						<oxy:PlotView Name="plotView" Model="{Binding PlotModel}"
+                                    Height="230"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+					</Border>
 
-                    <!-- Step by step controls -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" Margin="0,15,0,0">
-                        <TextBlock Name="lblStepInfo" Text="Пошаговый просмотр:" FontWeight="SemiBold" Foreground="#2C5F9E" Margin="0,0,0,8"/>
-                        <ListBox Name="lstSteps" Height="120" BorderThickness="1" BorderBrush="#CCCCCC"
+					<!-- Step by step controls -->
+					<StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" Margin="0,15,0,0">
+						<TextBlock Name="lblStepInfo" Text="Пошаговый просмотр:" FontWeight="SemiBold" Foreground="#2C5F9E" Margin="0,0,0,8"/>
+						<ListBox Name="lstSteps" Height="120" BorderThickness="1" BorderBrush="#CCCCCC"
                                ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button Name="btnPrevStep" Content="← Назад" Style="{StaticResource ModernButton}" 
+						<StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+							<Button Name="btnPrevStep" Content="← Назад" Style="{StaticResource ModernButton}"
                                   Width="80" Click="PrevStep_Click" Background="#6c757d"/>
-                            <Button Name="btnNextStep" Content="Вперед →" Style="{StaticResource ModernButton}" 
+							<Button Name="btnNextStep" Content="Вперед →" Style="{StaticResource ModernButton}"
                                   Width="80" Margin="10,0,0,0" Click="NextStep_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-            </GroupBox>
-        </Grid>
-    </Grid>
+						</StackPanel>
+					</StackPanel>
+				</Grid>
+			</GroupBox>
+		</Grid>
+	</Grid>
 </Window>

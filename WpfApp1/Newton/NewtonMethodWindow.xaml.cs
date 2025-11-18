@@ -4,18 +4,18 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
-using LiveCharts;
-using LiveCharts.Wpf;
-using LiveCharts.Defaults;
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.Axes;
 
 namespace WpfApp1
 {
     public partial class NewtonMethodWindow : Window
     {
-        public SeriesCollection SeriesCollection { get; set; }
-        public ChartValues<ObservablePoint> FunctionValues { get; set; }
-        public ChartValues<ObservablePoint> MinimumPoints { get; set; }
-        public ChartValues<ObservablePoint> IterationPoints { get; set; }
+        public PlotModel PlotModel { get; set; }
+        private List<DataPoint> _functionPoints;
+        private List<DataPoint> _minimumPoints;
+        private List<DataPoint> _iterationPoints;
 
         private NewtonMethod _newtonMethod;
         private List<NewtonIteration> _stepByStepIterations;
@@ -24,15 +24,44 @@ namespace WpfApp1
         public NewtonMethodWindow()
         {
             InitializeComponent();
-            DataContext = this;
 
-            FunctionValues = new ChartValues<ObservablePoint>();
-            MinimumPoints = new ChartValues<ObservablePoint>();
-            IterationPoints = new ChartValues<ObservablePoint>();
+            // Инициализация модели графика
+            PlotModel = new PlotModel
+            {
+                Title = "График функции и поиск минимума",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            };
+
+            // Настройка осей
+            PlotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Bottom,
+                Title = "x",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            });
+            PlotModel.Axes.Add(new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Title = "f(x)",
+                TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+            });
+
+            _functionPoints = new List<DataPoint>();
+            _minimumPoints = new List<DataPoint>();
+            _iterationPoints = new List<DataPoint>();
 
             _stepByStepIterations = new List<NewtonIteration>();
             _currentStepIndex = -1;
 
+            DataContext = this;
             UpdateStepControls();
         }
 
@@ -133,7 +162,6 @@ namespace WpfApp1
 
                 PlotGraphWithMinimum(a, b, result);
                 UpdateStepControls();
-
                 UpdateStepsList();
             }
             catch (Exception ex)
@@ -159,7 +187,7 @@ namespace WpfApp1
                         validPoints++;
                 }
 
-                return validPoints >= testPoints * 0.7; 
+                return validPoints >= testPoints * 0.7;
             }
             catch
             {
@@ -250,10 +278,39 @@ namespace WpfApp1
             lblFunctionValue.Text = $"f(x) = {iteration.FunctionValue:F6}";
             lblDerivative.Text = $"f'(x) = {iteration.FirstDerivative:E2}, f''(x) = {iteration.SecondDerivative:E2}";
 
-            IterationPoints.Clear();
-            IterationPoints.Add(new ObservablePoint(iteration.X, iteration.FunctionValue));
-
             UpdateStepsList();
+            PlotCurrentStep();
+        }
+
+        private void PlotCurrentStep()
+        {
+            if (_currentStepIndex < 0 || _currentStepIndex >= _stepByStepIterations.Count)
+                return;
+
+            var iteration = _stepByStepIterations[_currentStepIndex];
+
+            // Очищаем предыдущие точки итераций
+            var existingIterationSeries = PlotModel.Series.OfType<ScatterSeries>()
+                .FirstOrDefault(s => s.Title == "Текущая итерация");
+            if (existingIterationSeries != null)
+            {
+                PlotModel.Series.Remove(existingIterationSeries);
+            }
+
+            // Добавляем текущую точку итерации
+            var iterationSeries = new ScatterSeries
+            {
+                Title = "Текущая итерация",
+                MarkerType = MarkerType.Triangle,
+                MarkerSize = 8,
+                MarkerFill = OxyColor.FromRgb(0x32, 0xCD, 0x32),
+                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                MarkerStrokeThickness = 2
+            };
+            iterationSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
+            PlotModel.Series.Add(iterationSeries);
+
+            PlotModel.InvalidatePlot(true);
         }
 
         private void UpdateStepsList()
@@ -288,74 +345,195 @@ namespace WpfApp1
 
         private void PlotGraphWithMinimum(double a, double b, NewtonResult result)
         {
-            FunctionValues.Clear();
-            MinimumPoints.Clear();
-            IterationPoints.Clear();
+            PlotModel.Series.Clear();
+            _functionPoints.Clear();
+            _minimumPoints.Clear();
+            _iterationPoints.Clear();
 
-            int pointsCount = 300;
+            int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            for (double x = a; x <= b; x += step)
+            // Создаем сегменты для обработки разрывов
+            List<List<DataPoint>> segments = new List<List<DataPoint>>();
+            List<DataPoint> currentSegment = new List<DataPoint>();
+
+            for (int i = 0; i <= pointsCount; i++)
             {
+                double x = a + i * step;
                 try
                 {
                     double y = _newtonMethod.CalculateFunction(x);
-                    FunctionValues.Add(new ObservablePoint(x, y));
+
+                    // Проверяем на разрыв
+                    if (currentSegment.Count > 0)
+                    {
+                        double lastY = currentSegment.Last().Y;
+                        double diff = Math.Abs(y - lastY);
+
+                        if (double.IsNaN(y) || double.IsInfinity(y) ||
+                            (diff > Math.Abs(lastY) * 100 && diff > 1000))
+                        {
+                            if (currentSegment.Count > 1)
+                            {
+                                segments.Add(new List<DataPoint>(currentSegment));
+                            }
+                            currentSegment.Clear();
+                            continue;
+                        }
+                    }
+
+                    currentSegment.Add(new DataPoint(x, y));
                 }
                 catch
                 {
+                    if (currentSegment.Count > 1)
+                    {
+                        segments.Add(new List<DataPoint>(currentSegment));
+                    }
+                    currentSegment.Clear();
                 }
             }
 
-            try
+            // Добавляем последний сегмент
+            if (currentSegment.Count > 1)
             {
-                if (result.IsMinimum)
-                {
-                    MinimumPoints.Add(new ObservablePoint(result.MinimumPoint, result.MinimumValue));
-                }
-
-                double fa = _newtonMethod.CalculateFunction(a);
-                double fb = _newtonMethod.CalculateFunction(b);
-
-                if (fa < double.MaxValue - 1)
-                {
-                }
-
-                if (fb < double.MaxValue - 1)
-                {
-                }
-
-                foreach (var iteration in result.StepByStepIterations)
-                {
-                    IterationPoints.Add(new ObservablePoint(iteration.X, iteration.FunctionValue));
-                }
+                segments.Add(new List<DataPoint>(currentSegment));
             }
-            catch
+
+            // Добавляем все сегменты на график
+            int segmentNumber = 0;
+            foreach (var segment in segments)
             {
-           
+                LineSeries segmentSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    StrokeThickness = 2,
+                    Title = segmentNumber == 0 ? "Функция" : null
+                };
+
+                foreach (var point in segment)
+                {
+                    segmentSeries.Points.Add(point);
+                }
+
+                PlotModel.Series.Add(segmentSeries);
+                segmentNumber++;
             }
+
+            // Добавляем точку минимума
+            if (result.IsMinimum)
+            {
+                ScatterSeries minimumSeries = new ScatterSeries
+                {
+                    Title = "Минимум",
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 8,
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
+                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    MarkerStrokeThickness = 2
+                };
+                minimumSeries.Points.Add(new ScatterPoint(result.MinimumPoint, result.MinimumValue));
+                PlotModel.Series.Add(minimumSeries);
+            }
+
+            // Добавляем точки итераций
+            ScatterSeries iterationsSeries = new ScatterSeries
+            {
+                Title = "Итерации",
+                MarkerType = MarkerType.Triangle,
+                MarkerSize = 6,
+                MarkerFill = OxyColor.FromRgb(0x32, 0xCD, 0x32),
+                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                MarkerStrokeThickness = 1
+            };
+
+            foreach (var iteration in result.StepByStepIterations)
+            {
+                iterationsSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
+            }
+
+            PlotModel.Series.Add(iterationsSeries);
+            PlotModel.InvalidatePlot(true);
         }
 
         private void PlotInitialGraph(double a, double b)
         {
-            FunctionValues.Clear();
-            MinimumPoints.Clear();
-            IterationPoints.Clear();
+            PlotModel.Series.Clear();
+            _functionPoints.Clear();
+            _minimumPoints.Clear();
+            _iterationPoints.Clear();
 
-            int pointsCount = 300;
+            int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            for (double x = a; x <= b; x += step)
+            // Создаем сегменты для обработки разрывов
+            List<List<DataPoint>> segments = new List<List<DataPoint>>();
+            List<DataPoint> currentSegment = new List<DataPoint>();
+
+            for (int i = 0; i <= pointsCount; i++)
             {
+                double x = a + i * step;
                 try
                 {
                     double y = _newtonMethod.CalculateFunction(x);
-                    FunctionValues.Add(new ObservablePoint(x, y));
+
+                    // Проверяем на разрыв
+                    if (currentSegment.Count > 0)
+                    {
+                        double lastY = currentSegment.Last().Y;
+                        double diff = Math.Abs(y - lastY);
+
+                        if (double.IsNaN(y) || double.IsInfinity(y) ||
+                            (diff > Math.Abs(lastY) * 100 && diff > 1000))
+                        {
+                            if (currentSegment.Count > 1)
+                            {
+                                segments.Add(new List<DataPoint>(currentSegment));
+                            }
+                            currentSegment.Clear();
+                            continue;
+                        }
+                    }
+
+                    currentSegment.Add(new DataPoint(x, y));
                 }
                 catch
                 {
+                    if (currentSegment.Count > 1)
+                    {
+                        segments.Add(new List<DataPoint>(currentSegment));
+                    }
+                    currentSegment.Clear();
                 }
             }
+
+            // Добавляем последний сегмент
+            if (currentSegment.Count > 1)
+            {
+                segments.Add(new List<DataPoint>(currentSegment));
+            }
+
+            // Добавляем все сегменты на график
+            int segmentNumber = 0;
+            foreach (var segment in segments)
+            {
+                LineSeries segmentSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    StrokeThickness = 2,
+                    Title = segmentNumber == 0 ? "Функция" : null
+                };
+
+                foreach (var point in segment)
+                {
+                    segmentSeries.Points.Add(point);
+                }
+
+                PlotModel.Series.Add(segmentSeries);
+                segmentNumber++;
+            }
+
+            PlotModel.InvalidatePlot(true);
         }
 
         private bool ValidateInput()
@@ -441,9 +619,8 @@ namespace WpfApp1
             lblFunctionValue.Text = "Значение функции: ";
             lblDerivative.Text = "Производная в точке: ";
 
-            FunctionValues.Clear();
-            MinimumPoints.Clear();
-            IterationPoints.Clear();
+            PlotModel.Series.Clear();
+            PlotModel.InvalidatePlot(true);
 
             _stepByStepIterations.Clear();
             _currentStepIndex = -1;
@@ -458,16 +635,7 @@ namespace WpfApp1
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (chart != null)
-            {
-                chart.Series.Clear();
-                chart = null;
-            }
-
-            FunctionValues?.Clear();
-            MinimumPoints?.Clear();
-            IterationPoints?.Clear();
-            SeriesCollection?.Clear();
+            PlotModel?.Series.Clear();
         }
 
         private string PreprocessFunction(string function)
