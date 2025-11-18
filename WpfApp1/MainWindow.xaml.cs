@@ -51,6 +51,14 @@ namespace WpfApp1
             objSLAE.Show();
         }
 
+        private void Button_ClickSorting(object sender, RoutedEventArgs e)
+        {
+            SortingWindow objSLAE = new SortingWindow();
+            objSLAE.Closed += Window_Closed;
+            this.Hide();
+            objSLAE.Show();
+        }
+
         private void Button_ClickNewton(object sender, RoutedEventArgs e)
         {
             NewtonMethodWindow objSLAE = new NewtonMethodWindow();

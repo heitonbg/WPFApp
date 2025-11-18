@@ -140,7 +140,7 @@
 
                     <Button Content="Олимпиадные сортировки" 
                             Style="{StaticResource ModernButton}"
-                            IsEnabled="False"
+                            Click="Button_ClickSorting"
                             Margin="0,0,0,12"/>
 
                     <Button Content="Решение интеграла" 
