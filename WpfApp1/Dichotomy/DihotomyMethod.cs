@@ -1,5 +1,7 @@
 ﻿using System;
 using NCalc;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace WpfApp1
 {
@@ -116,6 +118,46 @@ namespace WpfApp1
             }
         }
 
+        public bool TestFunctionOnInterval(double a, double b)
+        {
+            try
+            {
+                int testPoints = 10;
+                double step = (b - a) / testPoints;
+                int validPoints = 0;
+
+                for (int i = 0; i <= testPoints; i++)
+                {
+                    double x = a + i * step;
+                    double value = CalculateFunction(x);
+                    if (value < double.MaxValue - 1 && !double.IsNaN(value) && !double.IsInfinity(value))
+                        validPoints++;
+                }
+
+                return validPoints >= testPoints * 0.7;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool HasSameSignOnEnds(double a, double b)
+        {
+            try
+            {
+                double fa = CalculateFunction(a);
+                double fb = CalculateFunction(b);
+
+                // Если функция на концах имеет одинаковый знак и не равна нулю
+                return Math.Sign(fa) == Math.Sign(fb) && Math.Abs(fa) > 1e-15 && Math.Abs(fb) > 1e-15;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public List<double> FindRoots(double a, double b, double epsilon, int maxRoots = 10)
         {
             if (a >= b)
@@ -128,6 +170,13 @@ namespace WpfApp1
                 throw new ArgumentException("Точность epsilon должна быть положительной");
             }
 
+            // Проверка на одинаковые знаки на концах интервала
+            if (HasSameSignOnEnds(a, b))
+            {
+                throw new InvalidOperationException($"Функция имеет одинаковый знак на концах интервала [{a}, {b}]. " +
+                                                  "Метод дихотомии не может найти корень на этом интервале.");
+            }
+
             List<double> roots = new List<double>();
             IterationsCount = 0;
 
@@ -138,6 +187,12 @@ namespace WpfApp1
             {
                 double segmentStart = a + i * segmentStep;
                 double segmentEnd = segmentStart + segmentStep;
+
+                // Проверяем, что функция определена на сегменте
+                if (!IsSegmentValid(segmentStart, segmentEnd))
+                {
+                    continue;
+                }
 
                 double fStart = CalculateFunction(segmentStart);
                 double fEnd = CalculateFunction(segmentEnd);
@@ -170,6 +225,25 @@ namespace WpfApp1
             }
 
             return roots;
+        }
+
+        private bool IsSegmentValid(double a, double b)
+        {
+            try
+            {
+                double mid = (a + b) / 2;
+                double fa = CalculateFunction(a);
+                double fb = CalculateFunction(b);
+                double fm = CalculateFunction(mid);
+
+                return !double.IsNaN(fa) && !double.IsInfinity(fa) &&
+                       !double.IsNaN(fb) && !double.IsInfinity(fb) &&
+                       !double.IsNaN(fm) && !double.IsInfinity(fm);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void AddRootIfNew(List<double> roots, double newRoot, double epsilon)
