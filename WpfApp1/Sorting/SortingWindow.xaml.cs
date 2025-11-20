@@ -15,7 +15,7 @@ namespace WpfApp1
     public partial class SortingWindow : Window
     {
         private SortingAlgorithms sorter = new SortingAlgorithms();
-        private List<int> originalData = new List<int>();
+        private List<double> originalData = new List<double>();
 
         public SortingWindow()
         {
@@ -27,8 +27,8 @@ namespace WpfApp1
         {
             try
             {
-                if (!int.TryParse(txtMinValue.Text, out int min) ||
-                    !int.TryParse(txtMaxValue.Text, out int max) ||
+                if (!double.TryParse(txtMinValue.Text, out double min) ||
+                    !double.TryParse(txtMaxValue.Text, out double max) ||
                     !int.TryParse(txtElementCount.Text, out int count))
                 {
                     MessageBox.Show("Введите корректные числовые значения для генерации!", "Ошибка",
@@ -43,19 +43,32 @@ namespace WpfApp1
                     return;
                 }
 
-                if (count <= 0 || count > 1000) 
+                // Убрано ограничение на количество элементов
+                if (count <= 0)
                 {
-                    MessageBox.Show("Количество элементов должно быть от 1 до 1000!", "Ошибка",
+                    MessageBox.Show("Количество элементов должно быть больше 0!", "Ошибка",
                                   MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
+                }
+
+                // Предупреждение для большого количества элементов
+                if (count > 10000)
+                {
+                    var result = MessageBox.Show($"Вы собираетесь сгенерировать {count} элементов. Это может занять значительное время и память. Продолжить?",
+                                               "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (result == MessageBoxResult.No)
+                        return;
                 }
 
                 Random rand = new Random();
                 originalData.Clear();
 
-                for (int i = 0; i < count; i++) 
+                for (int i = 0; i < count; i++)
                 {
-                    originalData.Add(rand.Next(min, max + 1));
+                    // Генерация double чисел с точностью до тысячных
+                    double randomValue = min + (rand.NextDouble() * (max - min));
+                    randomValue = Math.Round(randomValue, 3); // Округление до 3 знаков после запятой
+                    originalData.Add(randomValue);
                 }
 
                 UpdateDataGrid();
@@ -99,7 +112,7 @@ namespace WpfApp1
                 var dataItems = dataGrid.ItemsSource as IEnumerable<dynamic>;
                 if (dataItems != null && dataItems.Any())
                 {
-                    originalData = dataItems.Select(item => (int)item.Значение).ToList();
+                    originalData = dataItems.Select(item => (double)item.Значение).ToList();
                 }
 
                 var inputDialog = new ManualInputDialog(originalData);
@@ -143,7 +156,7 @@ namespace WpfApp1
         {
             try
             {
-                List<int> data = new List<int>();
+                List<double> data = new List<double>();
                 string extension = System.IO.Path.GetExtension(filePath).ToLower();
                 string fileName = System.IO.Path.GetFileName(filePath);
 
@@ -158,14 +171,32 @@ namespace WpfApp1
 
                 if (data.Any())
                 {
+                    // Предупреждение для большого количества элементов
+                    if (data.Count > 10000)
+                    {
+                        var result = MessageBox.Show($"Файл содержит {data.Count} элементов. Это может занять значительное время и память. Продолжить?",
+                                                   "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                        if (result == MessageBoxResult.No)
+                            return;
+                    }
+
                     originalData = data;
                     UpdateDataGrid();
                     txtResults.Text = $"УСПЕШНО ЗАГРУЖЕНО ИЗ ФАЙЛА:\n";
                     txtResults.Text += $"Файл: {fileName}\n";
                     txtResults.Text += $"Формат: {extension.ToUpper()}\n";
                     txtResults.Text += $"Количество элементов: {data.Count}\n";
-                    txtResults.Text += $"Диапазон данных: {data.Min()} - {data.Max()}\n";
-                    txtResults.Text += $"Первые 10 элементов: {string.Join(", ", data.Take(10))}" + (data.Count > 10 ? "..." : "") + "\n\n";
+                    txtResults.Text += $"Диапазон данных: {data.Min():F3} - {data.Max():F3}\n";
+
+                    // Показываем только первые 10 элементов для больших наборов
+                    if (data.Count > 10)
+                    {
+                        txtResults.Text += $"Первые 10 элементов: {string.Join(", ", data.Take(10).Select(x => x.ToString("F3")))}...\n\n";
+                    }
+                    else
+                    {
+                        txtResults.Text += $"Элементы: {string.Join(", ", data.Select(x => x.ToString("F3")))}\n\n";
+                    }
                 }
                 else
                 {
@@ -183,9 +214,9 @@ namespace WpfApp1
             }
         }
 
-        private List<int> LoadFromExcel(string filePath)
+        private List<double> LoadFromExcel(string filePath)
         {
-            List<int> data = new List<int>();
+            List<double> data = new List<double>();
 
             try
             {
@@ -200,7 +231,7 @@ namespace WpfApp1
                         return data;
                     }
 
-                    var worksheet = package.Workbook.Worksheets[0]; 
+                    var worksheet = package.Workbook.Worksheets[0];
                     var start = worksheet.Dimension.Start;
                     var end = worksheet.Dimension.End;
 
@@ -210,16 +241,12 @@ namespace WpfApp1
                         if (cellValue != null)
                         {
                             string stringValue = cellValue.ToString();
-                            if (int.TryParse(stringValue.Trim(), out int number))
-                            {
-                                data.Add(number);
-                            }
-                            else if (double.TryParse(stringValue.Trim(),
+                            if (double.TryParse(stringValue.Trim(),
                                 System.Globalization.NumberStyles.Any,
                                 System.Globalization.CultureInfo.InvariantCulture,
-                                out double doubleValue))
+                                out double number))
                             {
-                                data.Add((int)Math.Round(doubleValue));
+                                data.Add(Math.Round(number, 3)); // Округление до 3 знаков
                             }
                         }
                     }
@@ -240,9 +267,9 @@ namespace WpfApp1
             return data;
         }
 
-        private List<int> LoadFromTextFile(string filePath)
+        private List<double> LoadFromTextFile(string filePath)
         {
-            List<int> data = new List<int>();
+            List<double> data = new List<double>();
 
             Encoding encoding = DetectEncoding(filePath);
 
@@ -267,19 +294,12 @@ namespace WpfApp1
                         .Replace("{", "")
                         .Replace("}", "");
 
-                    if (int.TryParse(cleanedValue, out int number))
+                    if (double.TryParse(cleanedValue,
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out double number))
                     {
-                        data.Add(number);
-                    }
-                    else
-                    {
-                        if (double.TryParse(cleanedValue,
-                            System.Globalization.NumberStyles.Any,
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            out double doubleValue))
-                        {
-                            data.Add((int)Math.Round(doubleValue));
-                        }
+                        data.Add(Math.Round(number, 3)); // Округление до 3 знаков
                     }
                 }
             }
@@ -331,8 +351,8 @@ namespace WpfApp1
                     return;
                 }
 
-                List<int> data = dataItems.Select(item => (int)item.Значение).ToList();
-                originalData = new List<int>(data);
+                List<double> data = dataItems.Select(item => (double)item.Значение).ToList();
+                originalData = new List<double>(data);
 
                 bool ascending = comboOrder.SelectedIndex == 0;
                 txtResults.Clear();
@@ -356,104 +376,122 @@ namespace WpfApp1
                    cbBogo.IsChecked == true;
         }
 
-        private void PerformSorting(List<int> data, bool ascending)
+        private void PerformSorting(List<double> data, bool ascending)
         {
-            Dictionary<string, (TimeSpan Time, int Iterations)> results = new Dictionary<string, (TimeSpan, int)>();
-            Dictionary<string, List<int>> sortedData = new Dictionary<string, List<int>>();
+            Dictionary<string, (TimeSpan Time, int Iterations, bool IsCompleted)> results = new Dictionary<string, (TimeSpan, int, bool)>();
+            Dictionary<string, List<double>> sortedData = new Dictionary<string, List<double>>();
+
+            // Получаем максимальное количество итераций для Bogo
+            int maxBogoIterations = 0;
+            if (!int.TryParse(txtMaxBogoIterations.Text, out maxBogoIterations) || maxBogoIterations < 0)
+            {
+                maxBogoIterations = 0; // 0 = без ограничений
+            }
 
             txtResults.Text += "ВЫПОЛНЕНИЕ СОРТИРОВКИ:\n\n";
 
+            // Предупреждение для Bogo сортировки с большим количеством элементов
             if (cbBogo.IsChecked == true && data.Count > 12)
             {
-                MessageBox.Show($"Bogo сортировка отключена для {data.Count} элементов (максимум 12 элементов)\n" +
-                               "Используйте меньшее количество данных для Bogo сортировки.",
-                               "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
-                cbBogo.IsChecked = false;
+                var result = MessageBox.Show($"Bogo сортировка для {data.Count} элементов может занять очень много времени.\n" +
+                                           $"Максимальное количество итераций: {(maxBogoIterations == 0 ? "без ограничений" : maxBogoIterations.ToString())}\n" +
+                                           "Продолжить?",
+                                           "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.No)
+                {
+                    cbBogo.IsChecked = false;
+                }
             }
 
             if (cbBubble.IsChecked == true)
             {
-                var dataCopy = new List<int>(data);
+                var dataCopy = new List<double>(data);
                 var result = sorter.BubbleSort(dataCopy, ascending);
-                results.Add("Пузырьковая", (result.Time, result.Iterations));
+                results.Add("Пузырьковая", (result.Time, result.Iterations, result.IsCompleted));
                 sortedData.Add("Пузырьковая", dataCopy);
                 txtResults.Text += $"Пузырьковая: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций\n";
             }
 
             if (cbInsertion.IsChecked == true)
             {
-                var dataCopy = new List<int>(data);
+                var dataCopy = new List<double>(data);
                 var result = sorter.InsertionSort(dataCopy, ascending);
-                results.Add("Вставками", (result.Time, result.Iterations));
+                results.Add("Вставками", (result.Time, result.Iterations, result.IsCompleted));
                 sortedData.Add("Вставками", dataCopy);
                 txtResults.Text += $"Вставками: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций\n";
             }
 
             if (cbShaker.IsChecked == true)
             {
-                var dataCopy = new List<int>(data);
+                var dataCopy = new List<double>(data);
                 var result = sorter.ShakerSort(dataCopy, ascending);
-                results.Add("Шейкерная", (result.Time, result.Iterations));
+                results.Add("Шейкерная", (result.Time, result.Iterations, result.IsCompleted));
                 sortedData.Add("Шейкерная", dataCopy);
                 txtResults.Text += $"Шейкерная: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций\n";
             }
 
             if (cbQuick.IsChecked == true)
             {
-                var dataCopy = new List<int>(data);
+                var dataCopy = new List<double>(data);
                 var result = sorter.QuickSort(dataCopy, ascending);
-                results.Add("Быстрая", (result.Time, result.Iterations));
+                results.Add("Быстрая", (result.Time, result.Iterations, result.IsCompleted));
                 sortedData.Add("Быстрая", dataCopy);
                 txtResults.Text += $"Быстрая: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций\n";
             }
 
             if (cbBogo.IsChecked == true)
             {
-                if (data.Count <= 12) 
-                {
-                    var dataCopy = new List<int>(data);
-                    var result = sorter.BogoSort(dataCopy, ascending);
-                    results.Add("BOGO", (result.Time, result.Iterations));
-                    sortedData.Add("BOGO", dataCopy);
-                    txtResults.Text += $"BOGO: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций\n";
-                }
-                else
-                {
-                    txtResults.Text += $"BOGO: ПРОПУЩЕНА (слишком много данных: {data.Count} > 12)\n";
-                }
+                var dataCopy = new List<double>(data);
+                var result = sorter.BogoSort(dataCopy, ascending, maxBogoIterations);
+                results.Add("BOGO", (result.Time, result.Iterations, result.IsCompleted));
+                sortedData.Add("BOGO", dataCopy);
+                string status = result.IsCompleted ? "" : " [ПРЕРВАНА]";
+                txtResults.Text += $"BOGO: {result.Time.TotalMilliseconds:F3} мс, {result.Iterations} итераций{status}\n";
             }
 
             VisualizeAllResults(sortedData);
             DisplayFinalResults(results);
         }
 
-        private void DisplayFinalResults(Dictionary<string, (TimeSpan Time, int Iterations)> results)
+        private void DisplayFinalResults(Dictionary<string, (TimeSpan Time, int Iterations, bool IsCompleted)> results)
         {
             if (results.Any())
             {
-                var fastest = results.OrderBy(r => r.Value.Time).First();
-                var slowest = results.OrderBy(r => r.Value.Time).Last();
-                var leastIterations = results.OrderBy(r => r.Value.Iterations).First();
+                var completedResults = results.Where(r => r.Value.IsCompleted);
 
                 txtResults.Text += $"\nРЕЗУЛЬТАТЫ:\n";
-                txtResults.Text += $"Всего алгоритмов: {results.Count}\n\n";
+                txtResults.Text += $"Всего алгоритмов: {results.Count}\n";
+                txtResults.Text += $"Завершено: {completedResults.Count()}\n";
+                if (results.Any(r => !r.Value.IsCompleted))
+                {
+                    txtResults.Text += $"Прервано: {results.Count(r => !r.Value.IsCompleted)}\n";
+                }
+                txtResults.Text += "\n";
 
                 foreach (var result in results.OrderBy(r => r.Value.Time))
                 {
-                    string timeMarker = result.Key == fastest.Key ? "[БЫСТРЕЙШИЙ] " : "";
-                    string iterMarker = result.Key == leastIterations.Key ? "[МЕНЬШЕ ИТЕРАЦИЙ] " : "";
-                    txtResults.Text += $"{timeMarker}{result.Key}:\n";
+                    string status = result.Value.IsCompleted ? "" : " [ПРЕРВАНА]";
+                    string timeMarker = completedResults.Any() && result.Key == completedResults.OrderBy(r => r.Value.Time).First().Key ? "[БЫСТРЕЙШИЙ] " : "";
+
+                    txtResults.Text += $"{timeMarker}{result.Key}{status}:\n";
                     txtResults.Text += $"   Время: {result.Value.Time.TotalMilliseconds:F3} мс\n";
-                    txtResults.Text += $"   {iterMarker}Итерации: {result.Value.Iterations}\n\n";
+                    txtResults.Text += $"   Итерации: {result.Value.Iterations}\n\n";
                 }
 
-                txtResults.Text += $"САМЫЙ БЫСТРЫЙ: {fastest.Key} ({fastest.Value.Time.TotalMilliseconds:F3} мс)\n";
-                txtResults.Text += $"САМЫЙ МЕДЛЕННЫЙ: {slowest.Key} ({slowest.Value.Time.TotalMilliseconds:F3} мс)\n";
-                txtResults.Text += $"МЕНЬШЕ ВСЕХ ИТЕРАЦИЙ: {leastIterations.Key} ({leastIterations.Value.Iterations} итераций)\n";
+                if (completedResults.Any())
+                {
+                    var fastest = completedResults.OrderBy(r => r.Value.Time).First();
+                    var slowest = completedResults.OrderBy(r => r.Value.Time).Last();
+                    var leastIterations = completedResults.OrderBy(r => r.Value.Iterations).First();
+
+                    txtResults.Text += $"САМЫЙ БЫСТРЫЙ: {fastest.Key} ({fastest.Value.Time.TotalMilliseconds:F3} мс)\n";
+                    txtResults.Text += $"САМЫЙ МЕДЛЕННЫЙ: {slowest.Key} ({slowest.Value.Time.TotalMilliseconds:F3} мс)\n";
+                    txtResults.Text += $"МЕНЬШЕ ВСЕХ ИТЕРАЦИЙ: {leastIterations.Key} ({leastIterations.Value.Iterations} итераций)\n";
+                }
             }
         }
 
-        private void VisualizeAllResults(Dictionary<string, List<int>> sortedData)
+        private void VisualizeAllResults(Dictionary<string, List<double>> sortedData)
         {
             visualizationCanvas.Children.Clear();
 
@@ -495,15 +533,15 @@ namespace WpfApp1
             Color[] colors = { Colors.Blue, Colors.Green, Colors.Orange, Colors.Red, Colors.Purple };
             int colorIndex = 0;
 
-            int globalMin = sortedData.Min(algorithm => algorithm.Value.Min());
-            int globalMax = sortedData.Max(algorithm => algorithm.Value.Max());
+            double globalMin = sortedData.Min(algorithm => algorithm.Value.Min());
+            double globalMax = sortedData.Max(algorithm => algorithm.Value.Max());
             double dataRange = globalMax - globalMin;
 
             if (dataRange == 0) dataRange = 1;
 
             double scale = (canvasHeight - 60) / dataRange;
 
-            double minBarWidth = 2.0; 
+            double minBarWidth = 2.0;
             double barWidth = Math.Max(minBarWidth, (sectionWidth - 30) / dataCount);
 
             foreach (var algorithm in sortedData)
@@ -550,7 +588,7 @@ namespace WpfApp1
                         {
                             TextBlock valueLabel = new TextBlock
                             {
-                                Text = data[i].ToString(),
+                                Text = data[i].ToString("F2"), // Отображение с 2 знаками после запятой
                                 FontSize = 8,
                                 Foreground = Brushes.Black,
                                 HorizontalAlignment = HorizontalAlignment.Center
@@ -593,4 +631,4 @@ namespace WpfApp1
             }
         }
     }
-}
+}   

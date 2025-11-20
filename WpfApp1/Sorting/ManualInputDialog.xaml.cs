@@ -7,13 +7,13 @@ namespace WpfApp1
 {
     public partial class ManualInputDialog : Window
     {
-        public List<int> Data { get; private set; }
+        public List<double> Data { get; private set; }
 
-        public ManualInputDialog(List<int> currentData)
+        public ManualInputDialog(List<double> currentData)
         {
             InitializeComponent();
-            Data = new List<int>(currentData);
-            txtInput.Text = string.Join(Environment.NewLine, currentData);
+            Data = new List<double>(currentData);
+            txtInput.Text = string.Join(Environment.NewLine, currentData.Select(x => x.ToString("F3")));
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
@@ -21,13 +21,16 @@ namespace WpfApp1
             try
             {
                 var lines = txtInput.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                var newData = new List<int>();
+                var newData = new List<double>();
 
                 foreach (var line in lines)
                 {
-                    if (int.TryParse(line.Trim(), out int value))
+                    if (double.TryParse(line.Trim(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out double value))
                     {
-                        newData.Add(value);
+                        newData.Add(Math.Round(value, 3)); // Округление до 3 знаков
                     }
                     else
                     {
