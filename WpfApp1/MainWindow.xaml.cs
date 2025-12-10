@@ -67,6 +67,15 @@ namespace WpfApp1
             objSLAE.Show();
         }
 
+
+        private void Button_ClickIntegral(object sender, RoutedEventArgs e)
+        {
+            IntegralMethodsWindow objIntegralMethods = new IntegralMethodsWindow();
+            objIntegralMethods.Closed += Window_Closed;
+            this.Hide();
+            objIntegralMethods.Show();
+        }
+
         private void Window_Closed(object sender, EventArgs e)
         {
             this.Show(); 
