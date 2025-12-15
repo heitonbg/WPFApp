@@ -6,7 +6,7 @@
         xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         Title="Метод золотого сечения"
-        Height="700" Width="1000"
+        Height="800" Width="1200"
         WindowStartupLocation="CenterScreen"
         Closing="Window_Closing"
         Loaded="Window_Loaded"
@@ -135,6 +135,7 @@
 			<Menu Grid.Row="0" Background="Transparent" Style="{StaticResource MenuStyle}">
 				<MenuItem Header="Файл" Style="{StaticResource MenuItemStyle}">
 					<MenuItem Header="Найти экстремум" Click="Calculate_Click" Style="{StaticResource MenuItemStyle}"/>
+					<MenuItem Header="Найти корень" Click="FindRoot_Click" Style="{StaticResource MenuItemStyle}"/>
 					<MenuItem Header="Очистить" Click="Clear_Click" Style="{StaticResource MenuItemStyle}"/>
 					<Separator/>
 					<MenuItem Header="Выход" Click="Exit_Click" Style="{StaticResource MenuItemStyle}"/>
@@ -148,7 +149,7 @@
                           FontWeight="Light"
                           Foreground="#2C5F9E"
                           HorizontalAlignment="Center"/>
-				<TextBlock Text="Поиск экстремума функции"
+				<TextBlock Text="Поиск экстремума функции и корней уравнений"
                           FontSize="14"
                           FontWeight="Normal"
                           Foreground="#2C5F9E"
@@ -160,6 +161,7 @@
 			<GroupBox Grid.Row="2" Header="Параметры расчета" Style="{StaticResource GroupBoxStyle}" Margin="0,0,0,10">
 				<Grid>
 					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="Auto"/>
@@ -181,7 +183,7 @@
 
 					<Label Grid.Row="1" Grid.Column="0" Content="Функция f(x):" Style="{StaticResource LabelStyle}" Margin="5"/>
 					<TextBox Grid.Row="1" Grid.Column="1" Name="txtFunction" Style="{StaticResource TextBoxStyle}"
-                             Text="pow(x,2)" ToolTip="Введите математическое выражение функции. Примеры: pow(x,2), sin(x), exp(x)"/>
+                             Text="x^2" ToolTip="Введите математическое выражение функции. Примеры: x^2, sin(x), exp(x), x^3 - 2*x"/>
 
 					<Label Grid.Row="2" Grid.Column="0" Content="Начало интервала a:" Style="{StaticResource LabelStyle}" Margin="5"/>
 					<TextBox Grid.Row="2" Grid.Column="1" Name="txtA" Style="{StaticResource TextBoxStyle}" Text="-2"/>
@@ -190,10 +192,14 @@
 					<TextBox Grid.Row="3" Grid.Column="1" Name="txtB" Style="{StaticResource TextBoxStyle}" Text="2"/>
 
 					<Label Grid.Row="4" Grid.Column="0" Content="Точность ε:" Style="{StaticResource LabelStyle}" Margin="5"/>
-					<TextBox Grid.Row="4" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001"/>
+					<TextBox Grid.Row="4" Grid.Column="1" Name="txtEpsilon" Style="{StaticResource TextBoxStyle}" Text="0,001" ToolTip="Точность до 3 знаков после запятой"/>
 
-					<Button Grid.Row="5" Grid.Column="1" Name="btnCalculate" Content="Найти экстремум"
-                            Style="{StaticResource ModernButton}" HorizontalAlignment="Right" Width="140" Click="Calculate_Click"/>
+					<StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+						<Button Name="btnCalculate" Content="Найти экстремум"
+                            Style="{StaticResource ModernButton}" Width="140" Click="Calculate_Click" Margin="0,0,10,0"/>
+						<Button Name="btnFindRoot" Content="Найти корень"
+                            Style="{StaticResource ModernButton}" Width="140" Click="FindRoot_Click"/>
+					</StackPanel>
 				</Grid>
 			</GroupBox>
 
@@ -211,7 +217,8 @@
 
 					<!-- Results -->
 					<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,0,15,0">
-						<TextBlock Name="lblResult" Text="Точка экстремума: " FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblResult" Text="Результаты:" FontWeight="Bold" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="14"/>
+						<TextBlock Name="lblRootResult" Text="" FontWeight="Normal" Foreground="#2C5F9E" Margin="0,0,0,8" FontSize="13"/>
 					</StackPanel>
 
 					<!-- Chart -->

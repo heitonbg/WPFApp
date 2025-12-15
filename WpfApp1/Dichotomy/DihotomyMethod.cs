@@ -2,6 +2,7 @@
 using NCalc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace WpfApp1
 {
@@ -12,12 +13,76 @@ namespace WpfApp1
 
         public DihotomyMethod(string function)
         {
-            _expression = new Expression(function.ToLower(), EvaluateOptions.IgnoreCase);
+            // Преобразуем функцию для NCalc
+            string processedFunction = ProcessFunctionForNCalc(function.ToLower());
+            _expression = new Expression(processedFunction, EvaluateOptions.IgnoreCase);
 
             _expression.Parameters["pi"] = Math.PI;
             _expression.Parameters["e"] = Math.E;
 
             _expression.EvaluateFunction += EvaluateFunction;
+            _expression.EvaluateParameter += EvaluateParameter;
+        }
+
+        private string ProcessFunctionForNCalc(string function)
+        {
+            // Заменяем оператор ^ на вызов функции pow
+            string result = function;
+
+            // Преобразуем x^y в pow(x,y)
+            result = ConvertPowerOperator(result);
+
+            return result;
+        }
+
+        private string ConvertPowerOperator(string expression)
+        {
+            // Преобразует x^2 в pow(x,2) с учетом скобок
+            string result = expression;
+            int maxIterations = 20;
+            int iteration = 0;
+
+            while (iteration < maxIterations)
+            {
+                Match match = Regex.Match(result, @"([a-zA-Z0-9\.\(\)]+)\s*\^\s*([a-zA-Z0-9\.\(\)]+)");
+
+                if (!match.Success)
+                    break;
+
+                string left = match.Groups[1].Value.Trim();
+                string right = match.Groups[2].Value.Trim();
+
+                // Проверяем, нужно ли добавлять скобки
+                if (left.Contains('+') || left.Contains('-') || left.Contains('*') || left.Contains('/'))
+                {
+                    left = $"({left})";
+                }
+
+                if (right.Contains('+') || right.Contains('-') || right.Contains('*') || right.Contains('/'))
+                {
+                    right = $"({right})";
+                }
+
+                string replacement = $"pow({left},{right})";
+                result = result.Replace(match.Value, replacement);
+                iteration++;
+            }
+
+            return result;
+        }
+
+        private void EvaluateParameter(string name, ParameterArgs args)
+        {
+            // Дополнительные параметры, если нужны
+            switch (name.ToLower())
+            {
+                case "pi":
+                    args.Result = Math.PI;
+                    break;
+                case "e":
+                    args.Result = Math.E;
+                    break;
+            }
         }
 
         private void EvaluateFunction(string name, FunctionArgs args)
@@ -71,7 +136,16 @@ namespace WpfApp1
                     }
                     break;
                 case "pow":
-                    args.Result = Math.Pow(Convert.ToDouble(args.Parameters[0].Evaluate()), Convert.ToDouble(args.Parameters[1].Evaluate()));
+                    if (args.Parameters.Length == 2)
+                    {
+                        args.Result = Math.Pow(
+                            Convert.ToDouble(args.Parameters[0].Evaluate()),
+                            Convert.ToDouble(args.Parameters[1].Evaluate()));
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Функция pow требует 2 аргумента");
+                    }
                     break;
                 default:
                     throw new ArgumentException($"Неизвестная функция: {name}");
@@ -158,7 +232,7 @@ namespace WpfApp1
             }
         }
 
-        public List<double> FindRoots(double a, double b, double epsilon, int maxRoots = 10)
+        public double FindSingleRoot(double a, double b, double epsilon)
         {
             if (a >= b)
             {
@@ -177,84 +251,12 @@ namespace WpfApp1
                                                   "Метод дихотомии не может найти корень на этом интервале.");
             }
 
-            List<double> roots = new List<double>();
             IterationsCount = 0;
 
-            int segments = 100;
-            double segmentStep = (b - a) / segments;
-
-            for (int i = 0; i < segments; ++i)
-            {
-                double segmentStart = a + i * segmentStep;
-                double segmentEnd = segmentStart + segmentStep;
-
-                // Проверяем, что функция определена на сегменте
-                if (!IsSegmentValid(segmentStart, segmentEnd))
-                {
-                    continue;
-                }
-
-                double fStart = CalculateFunction(segmentStart);
-                double fEnd = CalculateFunction(segmentEnd);
-
-                if (Math.Abs(fStart) < epsilon)
-                {
-                    AddRootIfNew(roots, segmentStart, epsilon);
-                    continue;
-                }
-
-                if (fStart * fEnd < 0)
-                {
-                    double root = FindSingleRoot(segmentStart, segmentEnd, epsilon);
-                    AddRootIfNew(roots, root, epsilon);
-                }
-
-                else if (Math.Abs(fStart) < epsilon * 10 && Math.Abs(fEnd) < epsilon * 10)
-                {
-                    double mid = (segmentStart + segmentEnd) / 2;
-                    if (Math.Abs(CalculateFunction(mid)) < epsilon)
-                    {
-                        AddRootIfNew(roots, mid, epsilon);
-                    }
-                }
-
-                if (roots.Count >= maxRoots)
-                {
-                    break;
-                }
-            }
-
-            return roots;
+            return FindSingleRootInternal(a, b, epsilon);
         }
 
-        private bool IsSegmentValid(double a, double b)
-        {
-            try
-            {
-                double mid = (a + b) / 2;
-                double fa = CalculateFunction(a);
-                double fb = CalculateFunction(b);
-                double fm = CalculateFunction(mid);
-
-                return !double.IsNaN(fa) && !double.IsInfinity(fa) &&
-                       !double.IsNaN(fb) && !double.IsInfinity(fb) &&
-                       !double.IsNaN(fm) && !double.IsInfinity(fm);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private void AddRootIfNew(List<double> roots, double newRoot, double epsilon)
-        {
-            if (!roots.Any(root => Math.Abs(root - newRoot) < epsilon))
-            {
-                roots.Add(newRoot);
-            }
-        }
-
-        private double FindSingleRoot(double a, double b, double epsilon)
+        private double FindSingleRootInternal(double a, double b, double epsilon)
         {
             double fa = CalculateFunction(a);
             double fb = CalculateFunction(b);

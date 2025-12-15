@@ -81,7 +81,7 @@ namespace WpfApp1
                     Method = method,
                     Value = value,
                     Iterations = actualN,
-                    ErrorEstimate = 0 
+                    ErrorEstimate = 0
                 };
             }
 
@@ -104,6 +104,18 @@ namespace WpfApp1
 
         private IntegrationResult FindOptimalNForMethod(double a, double b, double epsilon, int startN, IntegrationMethod method)
         {
+            // Раздельная логика для Симпсона
+            if (method == IntegrationMethod.Simpson)
+            {
+                return FindOptimalNForSimpson(a, b, epsilon, startN);
+            }
+
+            // Оригинальная логика для остальных методов
+            return FindOptimalNForOtherMethods(a, b, epsilon, startN, method);
+        }
+
+        private IntegrationResult FindOptimalNForOtherMethods(double a, double b, double epsilon, int startN, IntegrationMethod method)
+        {
             int n = GetMinimumNForMethod(method, startN);
 
             var result = new IntegrationResult
@@ -113,27 +125,20 @@ namespace WpfApp1
                 HistoryN = new List<int>()
             };
 
-            int maxIterations = 500; 
+            int maxIterations = 50;
             double currentValue = 0;
             double previousValue = 0;
             bool precisionAchieved = false;
-            int stabilizationCount = 0;
-            const int maxStabilizations = 3; 
 
             for (int iteration = 0; iteration < maxIterations; iteration++)
             {
-                if (method == IntegrationMethod.Simpson && n % 2 != 0)
-                {
-                    n++;
-                }
-
                 try
                 {
                     currentValue = CalculateWithExactN(a, b, n, method);
                 }
                 catch (Exception)
                 {
-                    n = method == IntegrationMethod.Simpson ? n + 2 : n + 1;
+                    n = n + 1;
                     continue;
                 }
 
@@ -146,78 +151,36 @@ namespace WpfApp1
 
                     if (change <= epsilon)
                     {
-                        stabilizationCount++;
-
-                        if (stabilizationCount >= maxStabilizations)
-                        {
-                            precisionAchieved = true;
-                        }
-                    }
-                    else
-                    {
-                        stabilizationCount = 0;
-                    }
-
-                    int nextN = method == IntegrationMethod.Simpson ? n + 2 : n + 1;
-                    double nextValue;
-
-                    try
-                    {
-                        nextValue = CalculateWithExactN(a, b, nextN, method);
-                    }
-                    catch (Exception)
-                    {
-                        nextValue = currentValue;
-                    }
-
-                    double nextChange = Math.Abs(nextValue - currentValue);
-
-                    if (nextChange <= epsilon / 10)
-                    {
-                        stabilizationCount++;
-                        if (stabilizationCount >= maxStabilizations)
-                        {
-                            precisionAchieved = true;
-                        }
+                        precisionAchieved = true;
+                        result.ErrorEstimate = change;
+                        break;
                     }
                 }
 
                 previousValue = currentValue;
 
-                if (precisionAchieved || n >= 1000000)
+                // Увеличиваем N для следующих методов
+                if (method == IntegrationMethod.RectangleLeft || method == IntegrationMethod.RectangleRight)
                 {
-                    result.Value = currentValue;
-                    result.Iterations = n;
-
-                    if (result.History.Count >= 2)
-                    {
-                        double order = GetMethodOrder(method);
-                        double lastChange = Math.Abs(currentValue - result.History[result.History.Count - 2]);
-                        result.ErrorEstimate = lastChange / (Math.Pow(2, order) - 1);
-                    }
-                    else
-                    {
-                        result.ErrorEstimate = 0;
-                    }
-
-                    return result;
-                }
-
-                if (method == IntegrationMethod.Simpson)
-                {
-                    n += 2;
+                    n = (int)(n * 1.5);
                 }
                 else
                 {
-                    if (method == IntegrationMethod.RectangleLeft || method == IntegrationMethod.RectangleRight)
-                    {
-                        n += Math.Max(1, n / 10); 
-                    }
-                    else
-                    {
-                        n += 1;
-                    }
+                    n = (int)(n * 1.2);
                 }
+
+                // Ограничение максимального N
+                if (n > 1000000)
+                {
+                    break;
+                }
+            }
+
+            // Если точность не достигнута за maxIterations, используем последнее значение
+            if (!precisionAchieved && result.History.Count > 0)
+            {
+                currentValue = result.History.Last();
+                precisionAchieved = true;
             }
 
             result.Value = currentValue;
@@ -225,9 +188,118 @@ namespace WpfApp1
 
             if (result.History.Count >= 2)
             {
-                double order = GetMethodOrder(method);
-                double lastChange = Math.Abs(currentValue - result.History[result.History.Count - 2]);
-                result.ErrorEstimate = lastChange / (Math.Pow(2, order) - 1);
+                double lastChange = Math.Abs(result.History.Last() - result.History[result.History.Count - 2]);
+                result.ErrorEstimate = lastChange;
+            }
+            else
+            {
+                result.ErrorEstimate = double.MaxValue;
+            }
+
+            return result;
+        }
+
+        private IntegrationResult FindOptimalNForSimpson(double a, double b, double epsilon, int startN)
+        {
+            var result = new IntegrationResult
+            {
+                Method = IntegrationMethod.Simpson,
+                History = new List<double>(),
+                HistoryN = new List<int>()
+            };
+
+            // Начинаем с минимального четного N
+            int n = Math.Max(2, startN);
+            if (n % 2 != 0) n++;
+
+            int maxIterations = 30; // Меньше итераций для Симпсона
+            double currentValue = 0;
+            double previousValue = 0;
+            bool precisionAchieved = false;
+
+            for (int iteration = 0; iteration < maxIterations; iteration++)
+            {
+                try
+                {
+                    currentValue = CalculateWithExactN(a, b, n, IntegrationMethod.Simpson);
+                }
+                catch (Exception)
+                {
+                    n += 2;
+                    continue;
+                }
+
+                result.History.Add(currentValue);
+                result.HistoryN.Add(n);
+
+                // Для Симпсона используем более строгие критерии
+                if (iteration > 0)
+                {
+                    double change = Math.Abs(currentValue - previousValue);
+
+                    // Симпсон сходится быстрее, поэтому требуем меньшую ошибку
+                    if (change <= epsilon * 0.1)
+                    {
+                        precisionAchieved = true;
+                        result.ErrorEstimate = change;
+
+                        // Дополнительная проверка: делаем еще один шаг для уверенности
+                        if (iteration < maxIterations - 1)
+                        {
+                            int nextN = n + 2;
+                            try
+                            {
+                                double nextValue = CalculateWithExactN(a, b, nextN, IntegrationMethod.Simpson);
+                                double nextChange = Math.Abs(nextValue - currentValue);
+                                if (nextChange <= epsilon * 0.01) // Еще более строгая проверка
+                                {
+                                    break;
+                                }
+                            }
+                            catch
+                            {
+                                // Если ошибка при следующем вычислении, используем текущее значение
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                previousValue = currentValue;
+
+                // Для Симпсона увеличиваем N более агрессивно
+                if (n < 10) n += 2;
+                else if (n < 100) n = (int)(n * 1.5);
+                else if (n < 1000) n = (int)(n * 1.3);
+                else n = (int)(n * 1.2);
+
+                // Обеспечиваем четность
+                if (n % 2 != 0) n++;
+
+                // Ограничение максимального N
+                if (n > 50000) // Меньший предел для Симпсона
+                {
+                    break;
+                }
+            }
+
+            // Если точность не достигнута за maxIterations, используем последнее значение
+            if (!precisionAchieved && result.History.Count > 0)
+            {
+                currentValue = result.History.Last();
+            }
+
+            result.Value = currentValue;
+            result.Iterations = n;
+
+            if (result.History.Count >= 2)
+            {
+                double lastChange = Math.Abs(result.History.Last() - result.History[result.History.Count - 2]);
+                result.ErrorEstimate = lastChange;
             }
             else
             {
@@ -250,25 +322,12 @@ namespace WpfApp1
                 case IntegrationMethod.Trapezoidal:
                     minN = Math.Max(2, minN);
                     break;
-                default: 
+                default:
                     minN = Math.Max(1, minN);
                     break;
             }
 
             return minN;
-        }
-
-        private double GetMethodOrder(IntegrationMethod method)
-        {
-            return method switch
-            {
-                IntegrationMethod.RectangleLeft => 1.0,
-                IntegrationMethod.RectangleRight => 1.0,
-                IntegrationMethod.RectangleMidpoint => 2.0,
-                IntegrationMethod.Trapezoidal => 2.0,
-                IntegrationMethod.Simpson => 4.0,
-                _ => 1.0
-            };
         }
 
         private double CalculateWithExactN(double a, double b, int n, IntegrationMethod method)
@@ -346,7 +405,7 @@ namespace WpfApp1
                 throw new ArgumentException("Для метода Симпсона N должно быть четным");
             }
 
-            double sum = CalculateFunction(a); 
+            double sum = CalculateFunction(a);
 
             for (int i = 1; i < n; i += 2)
             {
@@ -360,7 +419,7 @@ namespace WpfApp1
                 sum += 2 * CalculateFunction(x);
             }
 
-            sum += CalculateFunction(b); 
+            sum += CalculateFunction(b);
 
             return (h / 3.0) * sum;
         }
