@@ -76,6 +76,14 @@ namespace WpfApp1
             objIntegralMethods.Show();
         }
 
+        private void Button_ClickCoordinate(object sender, RoutedEventArgs e)
+        {
+            CoordinateDescentWindow objCoordinateDescentWindow = new CoordinateDescentWindow();
+            objCoordinateDescentWindow.Closed += Window_Closed;
+            this.Hide();
+            objCoordinateDescentWindow.Show();
+        }
+
         private void Window_Closed(object sender, EventArgs e)
         {
             this.Show(); 
