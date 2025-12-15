@@ -7,6 +7,7 @@ using System.Windows;
 using OxyPlot;
 using OxyPlot.Series;
 using OxyPlot.Axes;
+using OxyPlot.Annotations;
 
 namespace WpfApp1
 {
@@ -16,10 +17,12 @@ namespace WpfApp1
         private List<DataPoint> _functionPoints;
         private List<DataPoint> _minimumPoints;
         private List<DataPoint> _iterationPoints;
+        private List<TangentLine> _tangentLines;
 
         private NewtonMethod _newtonMethod;
         private List<NewtonIteration> _stepByStepIterations;
         private int _currentStepIndex;
+        private bool _calculationPerformed = false;
 
         public NewtonMethodWindow()
         {
@@ -34,7 +37,7 @@ namespace WpfApp1
                 PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
             };
 
-            // Настройка осей
+            // Настройка осей как в методе дихотомии
             PlotModel.Axes.Add(new LinearAxis
             {
                 Position = AxisPosition.Bottom,
@@ -42,7 +45,9 @@ namespace WpfApp1
                 TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineStyle = LineStyle.Solid,
+                AxislineThickness = 1
             });
             PlotModel.Axes.Add(new LinearAxis
             {
@@ -51,18 +56,22 @@ namespace WpfApp1
                 TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 AxislineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
+                TicklineColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                AxislineStyle = LineStyle.Solid,
+                AxislineThickness = 1
             });
 
             _functionPoints = new List<DataPoint>();
             _minimumPoints = new List<DataPoint>();
             _iterationPoints = new List<DataPoint>();
+            _tangentLines = new List<TangentLine>();
 
             _stepByStepIterations = new List<NewtonIteration>();
             _currentStepIndex = -1;
 
             DataContext = this;
             UpdateStepControls();
+            ResetResultFields();
         }
 
         private void Calculate_Click(object sender, RoutedEventArgs e)
@@ -111,44 +120,46 @@ namespace WpfApp1
                     return;
                 }
 
+                int decimalPlaces = GetDecimalPlacesFromEpsilon(epsilon);
+
                 if (result.IsMinimum)
                 {
-                    lblResult.Text = $"Точка минимума: x = {result.MinimumPoint:F6}";
+                    lblResult.Text = "Минимум найден!";
                     lblIterations.Text = $"Количество итераций: {result.Iterations}";
-                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue:F6}";
-                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative:E2}, f''(x) = {result.FinalSecondDerivative:E2}";
+                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}";
+                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative.ToString("E2")}, f''(x) = {result.FinalSecondDerivative.ToString("E2")}";
 
                     MessageBox.Show($"Минимум успешно найден!\n\n" +
-                                  $"x = {result.MinimumPoint:F6}\n" +
-                                  $"f(x) = {result.MinimumValue:F6}\n" +
+                                  $"x = {result.MinimumPoint.ToString($"F{decimalPlaces}")}\n" +
+                                  $"f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}\n" +
                                   $"Итераций: {result.Iterations}\n" +
                                   $"{result.ConvergenceMessage}",
                                   "Результат", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else if (result.Converged)
                 {
-                    lblResult.Text = $"Найдена критическая точка: x = {result.MinimumPoint:F6} (не минимум)";
+                    lblResult.Text = "Критическая точка (не минимум)";
                     lblIterations.Text = $"Количество итераций: {result.Iterations}";
-                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue:F6}";
-                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative:E2}, f''(x) = {result.FinalSecondDerivative:E2}";
+                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}";
+                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative.ToString("E2")}, f''(x) = {result.FinalSecondDerivative.ToString("E2")}";
 
                     MessageBox.Show("Метод нашел критическую точку, но это не минимум! f''(x) ≤ 0\n\n" +
-                                  $"Точка: x = {result.MinimumPoint:F6}\n" +
-                                  $"f(x) = {result.MinimumValue:F6}\n" +
-                                  $"f''(x) = {result.FinalSecondDerivative:E2}\n\n" +
+                                  $"Точка: x = {result.MinimumPoint.ToString($"F{decimalPlaces}")}\n" +
+                                  $"f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}\n" +
+                                  $"f''(x) = {result.FinalSecondDerivative.ToString("E2")}\n\n" +
                                   "Попробуйте другую начальную точку.",
                                   "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 else
                 {
-                    lblResult.Text = $"Последняя точка: x = {result.MinimumPoint:F6} (не сошлось)";
+                    lblResult.Text = "Метод не сошелся";
                     lblIterations.Text = $"Количество итераций: {result.Iterations}";
-                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue:F6}";
-                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative:E2}, f''(x) = {result.FinalSecondDerivative:E2}";
+                    lblFunctionValue.Text = $"Значение функции: f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}";
+                    lblDerivative.Text = $"Производные: f'(x) = {result.FinalDerivative.ToString("E2")}, f''(x) = {result.FinalSecondDerivative.ToString("E2")}";
 
                     MessageBox.Show("Метод не сошелся к минимуму за указанное количество итераций.\n\n" +
-                                  $"Текущая точка: x = {result.MinimumPoint:F6}\n" +
-                                  $"f(x) = {result.MinimumValue:F6}\n\n" +
+                                  $"Текущая точка: x = {result.MinimumPoint.ToString($"F{decimalPlaces}")}\n" +
+                                  $"f(x) = {result.MinimumValue.ToString($"F{decimalPlaces}")}\n\n" +
                                   "Попробуйте:\n" +
                                   "- Увеличить максимальное количество итераций\n" +
                                   "- Изменить начальную точку\n" +
@@ -158,16 +169,31 @@ namespace WpfApp1
                 }
 
                 _stepByStepIterations = result.StepByStepIterations;
+                _tangentLines = result.TangentLines;
                 _currentStepIndex = _stepByStepIterations.Count - 1;
 
                 PlotGraphWithMinimum(a, b, result);
                 UpdateStepControls();
                 UpdateStepsList();
+
+                _calculationPerformed = true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка вычисления", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private int GetDecimalPlacesFromEpsilon(double epsilon)
+        {
+            if (epsilon >= 1) return 0;
+            if (epsilon >= 0.1) return 1;
+            if (epsilon >= 0.01) return 2;
+            if (epsilon >= 0.001) return 3;
+            if (epsilon >= 0.0001) return 4;
+            if (epsilon >= 0.00001) return 5;
+            if (epsilon >= 0.000001) return 6;
+            return 7;
         }
 
         private bool TestFunctionOnInterval(string function, double a, double b)
@@ -195,6 +221,287 @@ namespace WpfApp1
             }
         }
 
+        private void PlotGraphWithMinimum(double a, double b, NewtonResult result)
+        {
+            PlotModel.Series.Clear();
+            PlotModel.Annotations.Clear();
+            _functionPoints.Clear();
+            _minimumPoints.Clear();
+            _iterationPoints.Clear();
+
+            // Находим диапазон значений для корректного отображения осей
+            double minY = double.MaxValue;
+            double maxY = double.MinValue;
+
+            int pointsCount = 1000;
+            double step = (b - a) / pointsCount;
+
+            // Создаем сегменты для обработки разрывов
+            List<List<DataPoint>> segments = new List<List<DataPoint>>();
+            List<DataPoint> currentSegment = new List<DataPoint>();
+
+            for (int i = 0; i <= pointsCount; i++)
+            {
+                double x = a + i * step;
+                try
+                {
+                    double y = _newtonMethod.CalculateFunction(x);
+
+                    // Обновляем minY и maxY
+                    if (!double.IsNaN(y) && !double.IsInfinity(y))
+                    {
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+
+                    // Проверяем на разрыв
+                    if (currentSegment.Count > 0)
+                    {
+                        double lastY = currentSegment.Last().Y;
+                        double diff = Math.Abs(y - lastY);
+
+                        if (double.IsNaN(y) || double.IsInfinity(y) ||
+                            (diff > Math.Abs(lastY) * 100 && diff > 1000))
+                        {
+                            if (currentSegment.Count > 1)
+                            {
+                                segments.Add(new List<DataPoint>(currentSegment));
+                            }
+                            currentSegment.Clear();
+                            continue;
+                        }
+                    }
+
+                    currentSegment.Add(new DataPoint(x, y));
+                }
+                catch
+                {
+                    if (currentSegment.Count > 1)
+                    {
+                        segments.Add(new List<DataPoint>(currentSegment));
+                    }
+                    currentSegment.Clear();
+                }
+            }
+
+            // Добавляем последний сегмент
+            if (currentSegment.Count > 1)
+            {
+                segments.Add(new List<DataPoint>(currentSegment));
+            }
+
+            // Корректируем minY и maxY
+            if (minY == double.MaxValue) minY = -10;
+            if (maxY == double.MinValue) maxY = 10;
+
+            // Добавляем отступ
+            double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
+            minY -= yPadding;
+            maxY += yPadding;
+
+            // Расширяем границы по x
+            double xPadding = Math.Abs(b - a) * 0.1;
+            double visibleA = a - xPadding;
+            double visibleB = b + xPadding;
+
+            // Добавляем ось Y (x = 0) если она видима
+            if (visibleA <= 0 && visibleB >= 0)
+            {
+                LineSeries yAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось Y (x = 0)"
+                };
+
+                yAxisSeries.Points.Add(new DataPoint(0, minY));
+                yAxisSeries.Points.Add(new DataPoint(0, maxY));
+                PlotModel.Series.Add(yAxisSeries);
+
+                var yAxisAnnotation = new TextAnnotation
+                {
+                    Text = "y",
+                    TextPosition = new DataPoint(0 - xPadding * 0.05, maxY - yPadding * 0.5),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(yAxisAnnotation);
+            }
+
+            // Добавляем ось X (y = 0) если она видима
+            if (minY <= 0 && maxY >= 0)
+            {
+                LineSeries xAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось X (y = 0)"
+                };
+
+                xAxisSeries.Points.Add(new DataPoint(visibleA, 0));
+                xAxisSeries.Points.Add(new DataPoint(visibleB, 0));
+                PlotModel.Series.Add(xAxisSeries);
+
+                var xAxisAnnotation = new TextAnnotation
+                {
+                    Text = "x",
+                    TextPosition = new DataPoint(visibleB - xPadding * 0.25, 0 - yPadding * 0.15),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(xAxisAnnotation);
+            }
+
+            // Добавляем координатную сетку
+            PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[0].MajorGridlineThickness = 0.5;
+
+            PlotModel.Axes[1].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[1].MajorGridlineThickness = 0.5;
+
+            // Добавляем все сегменты графика функции
+            int segmentNumber = 0;
+            foreach (var segment in segments)
+            {
+                LineSeries segmentSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    StrokeThickness = 2.5,
+                    Title = segmentNumber == 0 ? "Функция f(x)" : null
+                };
+
+                foreach (var point in segment)
+                {
+                    segmentSeries.Points.Add(point);
+                }
+
+                PlotModel.Series.Add(segmentSeries);
+                segmentNumber++;
+            }
+
+            // Добавляем касательные
+            if (_tangentLines.Any())
+            {
+                foreach (var tangent in _tangentLines)
+                {
+                    if (tangent != null)
+                    {
+                        LineSeries tangentSeries = new LineSeries
+                        {
+                            Color = OxyColor.FromRgb(0xFF, 0x8C, 0x00), // Оранжевый
+                            StrokeThickness = 1.5,
+                            LineStyle = LineStyle.Dash,
+                            Title = "Касательная"
+                        };
+
+                        // Рисуем касательную в пределах видимой области
+                        double tangentY1 = tangent.GetY(visibleA);
+                        double tangentY2 = tangent.GetY(visibleB);
+
+                        tangentSeries.Points.Add(new DataPoint(visibleA, tangentY1));
+                        tangentSeries.Points.Add(new DataPoint(visibleB, tangentY2));
+
+                        PlotModel.Series.Add(tangentSeries);
+
+                        // Добавляем точку касания
+                        ScatterSeries tangentPointSeries = new ScatterSeries
+                        {
+                            MarkerType = MarkerType.Circle,
+                            MarkerSize = 5,
+                            MarkerFill = OxyColor.FromRgb(0xFF, 0x8C, 0x00),
+                            MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                            MarkerStrokeThickness = 1
+                        };
+                        tangentPointSeries.Points.Add(new ScatterPoint(tangent.PointX, tangent.PointY));
+                        PlotModel.Series.Add(tangentPointSeries);
+                    }
+                }
+            }
+
+            // Добавляем точку минимума
+            if (result.IsMinimum)
+            {
+                ScatterSeries minimumSeries = new ScatterSeries
+                {
+                    Title = "Минимум",
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 10,
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
+                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    MarkerStrokeThickness = 2
+                };
+                minimumSeries.Points.Add(new ScatterPoint(result.MinimumPoint, result.MinimumValue));
+                PlotModel.Series.Add(minimumSeries);
+
+                // Добавляем подпись
+                int decimalPlaces = GetDecimalPlacesFromEpsilon(double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture));
+                var minimumAnnotation = new TextAnnotation
+                {
+                    Text = $"({result.MinimumPoint.ToString($"F{decimalPlaces}")}, {result.MinimumValue.ToString($"F{decimalPlaces}")})",
+                    TextPosition = new DataPoint(result.MinimumPoint + xPadding * 0.05, result.MinimumValue + yPadding * 0.05),
+                    TextColor = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
+                    FontSize = 10,
+                    Background = OxyColor.FromArgb(200, 255, 255, 255)
+                };
+                PlotModel.Annotations.Add(minimumAnnotation);
+            }
+
+            // Добавляем точки итераций
+            ScatterSeries iterationsSeries = new ScatterSeries
+            {
+                Title = "Итерации",
+                MarkerType = MarkerType.Triangle,
+                MarkerSize = 6,
+                MarkerFill = OxyColor.FromRgb(0x32, 0xCD, 0x32),
+                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                MarkerStrokeThickness = 1
+            };
+
+            foreach (var iteration in result.StepByStepIterations)
+            {
+                iterationsSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
+            }
+
+            PlotModel.Series.Add(iterationsSeries);
+
+            // Добавляем точку пересечения осей (0,0) если видима
+            if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
+            {
+                ScatterSeries originSeries = new ScatterSeries
+                {
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 4,
+                    MarkerFill = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStroke = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStrokeThickness = 1,
+                    Title = "Начало координат"
+                };
+                originSeries.Points.Add(new ScatterPoint(0, 0));
+                PlotModel.Series.Add(originSeries);
+
+                var originAnnotation = new TextAnnotation
+                {
+                    Text = "(0,0)",
+                    TextPosition = new DataPoint(0 - xPadding * 0.1, 0 - yPadding * 0.1),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 9
+                };
+                PlotModel.Annotations.Add(originAnnotation);
+            }
+
+            // Обновляем границы осей
+            PlotModel.Axes[0].Minimum = visibleA;
+            PlotModel.Axes[0].Maximum = visibleB;
+            PlotModel.Axes[1].Minimum = minY;
+            PlotModel.Axes[1].Maximum = maxY;
+
+            PlotModel.InvalidatePlot(true);
+        }
+
         private void StepByStep_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -211,15 +518,6 @@ namespace WpfApp1
 
                 function = PreprocessFunction(function);
 
-                if (function.Contains("^") || function.Contains("**"))
-                {
-                    MessageBox.Show("Пожалуйста, используйте функцию pow(x,y) вместо операторов ^ или **.",
-                                  "Неподдерживаемый оператор",
-                                  MessageBoxButton.OK,
-                                  MessageBoxImage.Warning);
-                    return;
-                }
-
                 _newtonMethod = new NewtonMethod(function);
 
                 NewtonResult result = _newtonMethod.FindMinimum(x0, epsilon, maxIterations, a, b, true);
@@ -234,6 +532,7 @@ namespace WpfApp1
                 }
 
                 _stepByStepIterations = result.StepByStepIterations;
+                _tangentLines = result.TangentLines;
                 _currentStepIndex = 0;
 
                 PlotInitialGraph(a, b);
@@ -272,11 +571,12 @@ namespace WpfApp1
                 return;
 
             var iteration = _stepByStepIterations[_currentStepIndex];
+            int decimalPlaces = GetDecimalPlacesFromEpsilon(double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture));
 
-            lblResult.Text = $"Текущая точка: x = {iteration.X:F6}";
+            lblResult.Text = $"Текущая точка: x = {iteration.X.ToString($"F{decimalPlaces}")}";
             lblIterations.Text = $"Итерация: {iteration.Iteration + 1}";
-            lblFunctionValue.Text = $"f(x) = {iteration.FunctionValue:F6}";
-            lblDerivative.Text = $"f'(x) = {iteration.FirstDerivative:E2}, f''(x) = {iteration.SecondDerivative:E2}";
+            lblFunctionValue.Text = $"f(x) = {iteration.FunctionValue.ToString($"F{decimalPlaces}")}";
+            lblDerivative.Text = $"f'(x) = {iteration.FirstDerivative.ToString("E2")}, f''(x) = {iteration.SecondDerivative.ToString("E2")}";
 
             UpdateStepsList();
             PlotCurrentStep();
@@ -289,12 +589,15 @@ namespace WpfApp1
 
             var iteration = _stepByStepIterations[_currentStepIndex];
 
-            // Очищаем предыдущие точки итераций
-            var existingIterationSeries = PlotModel.Series.OfType<ScatterSeries>()
-                .FirstOrDefault(s => s.Title == "Текущая итерация");
-            if (existingIterationSeries != null)
+            // Очищаем предыдущие точки итераций и касательные
+            var seriesToRemove = PlotModel.Series.Where(s =>
+                s.Title == "Текущая итерация" ||
+                s.Title == "Касательная" ||
+                s.Title == "Точка касания").ToList();
+
+            foreach (var series in seriesToRemove)
             {
-                PlotModel.Series.Remove(existingIterationSeries);
+                PlotModel.Series.Remove(series);
             }
 
             // Добавляем текущую точку итерации
@@ -310,21 +613,62 @@ namespace WpfApp1
             iterationSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
             PlotModel.Series.Add(iterationSeries);
 
+            // Добавляем касательную для текущего шага
+            if (iteration.TangentLine != null)
+            {
+                double a = double.Parse(txtA.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+                double b = double.Parse(txtB.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+                double xPadding = Math.Abs(b - a) * 0.1;
+                double visibleA = a - xPadding;
+                double visibleB = b + xPadding;
+
+                LineSeries tangentSeries = new LineSeries
+                {
+                    Title = "Касательная",
+                    Color = OxyColor.FromRgb(0xFF, 0x8C, 0x00),
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Dash
+                };
+
+                double tangentY1 = iteration.TangentLine.GetY(visibleA);
+                double tangentY2 = iteration.TangentLine.GetY(visibleB);
+
+                tangentSeries.Points.Add(new DataPoint(visibleA, tangentY1));
+                tangentSeries.Points.Add(new DataPoint(visibleB, tangentY2));
+                PlotModel.Series.Add(tangentSeries);
+
+                // Добавляем точку касания
+                ScatterSeries tangentPointSeries = new ScatterSeries
+                {
+                    Title = "Точка касания",
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 6,
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x8C, 0x00),
+                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    MarkerStrokeThickness = 1
+                };
+                tangentPointSeries.Points.Add(new ScatterPoint(iteration.TangentLine.PointX, iteration.TangentLine.PointY));
+                PlotModel.Series.Add(tangentPointSeries);
+            }
+
             PlotModel.InvalidatePlot(true);
         }
 
         private void UpdateStepsList()
         {
             lstSteps.Items.Clear();
+            double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+
             for (int i = 0; i <= _currentStepIndex; i++)
             {
                 var step = _stepByStepIterations[i];
                 string stepType = "шаг";
-                if (i == _stepByStepIterations.Count - 1 && Math.Abs(step.FirstDerivative) < double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture) && step.SecondDerivative > 0)
+
+                if (i == _stepByStepIterations.Count - 1 && Math.Abs(step.FirstDerivative) < epsilon && step.SecondDerivative > 0)
                     stepType = "МИНИМУМ";
-                else if (Math.Abs(step.FirstDerivative) < double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture) && step.SecondDerivative > 0)
+                else if (Math.Abs(step.FirstDerivative) < epsilon && step.SecondDerivative > 0)
                     stepType = "минимум";
-                else if (Math.Abs(step.FirstDerivative) < double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture) && step.SecondDerivative < 0)
+                else if (Math.Abs(step.FirstDerivative) < epsilon && step.SecondDerivative < 0)
                     stepType = "максимум";
 
                 lstSteps.Items.Add($"{stepType} {i + 1}: x = {step.X:F4}, f(x) = {step.FunctionValue:F4}, f' = {step.FirstDerivative:E2}");
@@ -343,122 +687,10 @@ namespace WpfApp1
                 : "Пошаговый просмотр:";
         }
 
-        private void PlotGraphWithMinimum(double a, double b, NewtonResult result)
-        {
-            PlotModel.Series.Clear();
-            _functionPoints.Clear();
-            _minimumPoints.Clear();
-            _iterationPoints.Clear();
-
-            int pointsCount = 1000;
-            double step = (b - a) / pointsCount;
-
-            // Создаем сегменты для обработки разрывов
-            List<List<DataPoint>> segments = new List<List<DataPoint>>();
-            List<DataPoint> currentSegment = new List<DataPoint>();
-
-            for (int i = 0; i <= pointsCount; i++)
-            {
-                double x = a + i * step;
-                try
-                {
-                    double y = _newtonMethod.CalculateFunction(x);
-
-                    // Проверяем на разрыв
-                    if (currentSegment.Count > 0)
-                    {
-                        double lastY = currentSegment.Last().Y;
-                        double diff = Math.Abs(y - lastY);
-
-                        if (double.IsNaN(y) || double.IsInfinity(y) ||
-                            (diff > Math.Abs(lastY) * 100 && diff > 1000))
-                        {
-                            if (currentSegment.Count > 1)
-                            {
-                                segments.Add(new List<DataPoint>(currentSegment));
-                            }
-                            currentSegment.Clear();
-                            continue;
-                        }
-                    }
-
-                    currentSegment.Add(new DataPoint(x, y));
-                }
-                catch
-                {
-                    if (currentSegment.Count > 1)
-                    {
-                        segments.Add(new List<DataPoint>(currentSegment));
-                    }
-                    currentSegment.Clear();
-                }
-            }
-
-            // Добавляем последний сегмент
-            if (currentSegment.Count > 1)
-            {
-                segments.Add(new List<DataPoint>(currentSegment));
-            }
-
-            // Добавляем все сегменты на график
-            int segmentNumber = 0;
-            foreach (var segment in segments)
-            {
-                LineSeries segmentSeries = new LineSeries
-                {
-                    Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                    StrokeThickness = 2,
-                    Title = segmentNumber == 0 ? "Функция" : null
-                };
-
-                foreach (var point in segment)
-                {
-                    segmentSeries.Points.Add(point);
-                }
-
-                PlotModel.Series.Add(segmentSeries);
-                segmentNumber++;
-            }
-
-            // Добавляем точку минимума
-            if (result.IsMinimum)
-            {
-                ScatterSeries minimumSeries = new ScatterSeries
-                {
-                    Title = "Минимум",
-                    MarkerType = MarkerType.Circle,
-                    MarkerSize = 8,
-                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
-                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                    MarkerStrokeThickness = 2
-                };
-                minimumSeries.Points.Add(new ScatterPoint(result.MinimumPoint, result.MinimumValue));
-                PlotModel.Series.Add(minimumSeries);
-            }
-
-            // Добавляем точки итераций
-            ScatterSeries iterationsSeries = new ScatterSeries
-            {
-                Title = "Итерации",
-                MarkerType = MarkerType.Triangle,
-                MarkerSize = 6,
-                MarkerFill = OxyColor.FromRgb(0x32, 0xCD, 0x32),
-                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                MarkerStrokeThickness = 1
-            };
-
-            foreach (var iteration in result.StepByStepIterations)
-            {
-                iterationsSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
-            }
-
-            PlotModel.Series.Add(iterationsSeries);
-            PlotModel.InvalidatePlot(true);
-        }
-
         private void PlotInitialGraph(double a, double b)
         {
             PlotModel.Series.Clear();
+            PlotModel.Annotations.Clear();
             _functionPoints.Clear();
             _minimumPoints.Clear();
             _iterationPoints.Clear();
@@ -614,17 +846,17 @@ namespace WpfApp1
             txtA.Text = "-2";
             txtB.Text = "2";
 
-            lblResult.Text = "Точка минимума: ";
-            lblIterations.Text = "Количество итераций: ";
-            lblFunctionValue.Text = "Значение функции: ";
-            lblDerivative.Text = "Производная в точке: ";
+            ResetResultFields();
 
             PlotModel.Series.Clear();
+            PlotModel.Annotations.Clear();
             PlotModel.InvalidatePlot(true);
 
             _stepByStepIterations.Clear();
+            _tangentLines.Clear();
             _currentStepIndex = -1;
             lstSteps.Items.Clear();
+            _calculationPerformed = false;
             UpdateStepControls();
         }
 
@@ -636,6 +868,7 @@ namespace WpfApp1
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             PlotModel?.Series.Clear();
+            PlotModel?.Annotations.Clear();
         }
 
         private string PreprocessFunction(string function)
@@ -645,13 +878,111 @@ namespace WpfApp1
                 return function;
             }
 
-            string result = function;
+            string result = function.Trim();
 
+            // Заменяем запятые на точки в десятичных числах
             result = Regex.Replace(result, @"(\d),(\d)", "$1.$2");
 
-            result = Regex.Replace(result, @"([a-zA-Z0-9.]+)\^([a-zA-Z0-9.]+)", "pow($1,$2)");
+            // Заменяем оператор ^ на pow()
+            result = ConvertPowerOperator(result);
 
             return result;
+        }
+
+        private string ConvertPowerOperator(string expression)
+        {
+            string result = expression;
+            int maxIterations = 10;
+
+            for (int i = 0; i < maxIterations; i++)
+            {
+                Match match = Regex.Match(result, @"([a-zA-Z0-9\.]+|\([^)]+\))\s*\^\s*([a-zA-Z0-9\.]+|\([^)]+\))");
+
+                if (!match.Success)
+                    break;
+
+                string left = match.Groups[1].Value;
+                string right = match.Groups[2].Value;
+
+                if (left.StartsWith("(") && left.EndsWith(")"))
+                    left = left.Substring(1, left.Length - 2);
+                if (right.StartsWith("(") && right.EndsWith(")"))
+                    right = right.Substring(1, right.Length - 2);
+
+                string replacement = $"pow({left},{right})";
+                result = result.Replace(match.Value, replacement);
+            }
+
+            return result;
+        }
+
+        private void ShowHelp_Click(object sender, RoutedEventArgs e)
+        {
+            ShowFunctionHelp();
+        }
+
+        private void ShowFunctionHelp()
+        {
+            string helpText = @"СПРАВКА ПО МЕТОДУ НЬЮТОНА
+
+Принцип работы:
+───────────────
+Метод Ньютона для поиска минимума функции использует
+итерационную формулу:
+xₙ₊₁ = xₙ - f'(xₙ)/f''(xₙ)
+
+где:
+• f'(x) - первая производная (наклон касательной)
+• f''(x) - вторая производная (кривизна)
+
+Доступные математические функции:
+────────────────────────────────
+• Основные операции: +, -, *, /, ^
+• Тригонометрические: sin(x), cos(x), tan(x), atan(x)
+• Экспоненциальные: exp(x), sqrt(x)
+• Логарифмические: log(x), log10(x), log(x, b)
+• Другие: abs(x), pow(x, y)
+• Константы: pi, e
+
+Примеры функций:
+───────────────
+1. Квадратичная: x^2 - 4*x + 4
+2. Тригонометрическая: sin(x) + 0.5*x^2
+3. Экспоненциальная: exp(-x^2)
+4. Сложная: log(x^2 + 1) + sin(x)
+
+Особенности метода:
+─────────────────
+• Требуется дважды дифференцируемая функция
+• Чувствителен к выбору начальной точки
+• Быстрая сходимость при удачном приближении
+• Может расходиться при f''(x) ≈ 0
+
+Рекомендации:
+────────────
+1. Убедитесь, что функция определена на интервале
+2. Проверьте наличие минимума на интервале
+3. Используйте автоподбор начальной точки
+4. Начните с умеренной точности (0.001)
+5. Увеличьте число итераций при медленной сходимости";
+
+            MessageBox.Show(helpText, "Справка по методу Ньютона", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ResetResultFields()
+        {
+            lblResult.Text = "";
+            lblIterations.Text = "";
+            lblFunctionValue.Text = "";
+            lblDerivative.Text = "";
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (!_calculationPerformed)
+            {
+                ResetResultFields();
+            }
         }
     }
 }

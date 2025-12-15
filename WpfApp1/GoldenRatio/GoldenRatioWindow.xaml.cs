@@ -7,6 +7,7 @@ using System.Windows;
 using OxyPlot;
 using OxyPlot.Series;
 using OxyPlot.Axes;
+using OxyPlot.Annotations;
 using System.Windows.Media;
 
 namespace WpfApp1
@@ -20,21 +21,21 @@ namespace WpfApp1
 
         private MainWindow _mainWindow;
         private bool _findMinimum = true;
+        private bool _calculationPerformed = false;
 
         public GoldenRatioWindow()
         {
             InitializeComponent();
+
+            // Инициализация модели графика
             PlotModel = new PlotModel
             {
-                Title = "График функции",
+                Title = "График функции и поиск экстремума",
                 TitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 TextColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                 Background = OxyColors.White
             };
-            _functionPoints = new List<DataPoint>();
-            _extremumPoints = new List<DataPoint>();
-            _rootPoints = new List<DataPoint>();
 
             // Настройка осей
             PlotModel.Axes.Add(new LinearAxis
@@ -60,41 +61,16 @@ namespace WpfApp1
                 AxislineThickness = 1
             });
 
-            // Добавляем линии осей координат
-            AddAxisLines();
+            _functionPoints = new List<DataPoint>();
+            _extremumPoints = new List<DataPoint>();
+            _rootPoints = new List<DataPoint>();
 
             DataContext = this;
-            this.Closing += Window_Closing;
         }
 
         public GoldenRatioWindow(MainWindow mainWindow) : this()
         {
             _mainWindow = mainWindow;
-        }
-
-        private void AddAxisLines()
-        {
-            // Линия оси X (y = 0)
-            var xAxisLine = new LineSeries
-            {
-                Title = "Ось X (y = 0)",
-                Color = OxyColor.FromArgb(128, 0x2C, 0x5F, 0x9E),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash
-            };
-
-            // Линия оси Y (x = 0)
-            var yAxisLine = new LineSeries
-            {
-                Title = "Ось Y (x = 0)",
-                Color = OxyColor.FromArgb(128, 0x2C, 0x5F, 0x9E),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash
-            };
-
-            // Эти линии будут добавляться динамически при построении графика
-            PlotModel.Series.Add(xAxisLine);
-            PlotModel.Series.Add(yAxisLine);
         }
 
         private void Calculate_Click(object sender, RoutedEventArgs e)
@@ -112,80 +88,75 @@ namespace WpfApp1
                 string function = txtFunction.Text;
                 _findMinimum = cmbExtremumType.SelectedIndex == 0;
 
-                // Для отладки
-                Console.WriteLine($"=== НОВЫЙ РАСЧЕТ ===");
-                Console.WriteLine($"Исходная функция: {function}");
-
-                // Предобработка функции - пользователь может вводить e^x или exp(x)
+                // Предобработка функции
                 function = PreprocessFunction(function);
 
-                Console.WriteLine($"После предобработки: {function}");
-                Console.WriteLine($"Интервал: [{a}, {b}]");
-                Console.WriteLine($"Точность: {epsilon}");
+                // Автоматическая корректировка для логарифмов
+                if (function.ToLower().Contains("log") || function.ToLower().Contains("log10"))
+                {
+                    if (a <= 0)
+                    {
+                        MessageBox.Show("Внимание: логарифм не определен для x ≤ 0.\n" +
+                                      "Автоматически корректирую начало интервала на 0.001",
+                                      "Корректировка интервала", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        a = 0.001;
+                        txtA.Text = "0.001";
+                    }
+                }
 
                 // Создаем метод
                 GoldenRatioMethod method = new GoldenRatioMethod(function);
 
-                // Тестируем функцию в нескольких точках
-                Console.WriteLine($"Тест функции:");
-                try
+                // Проверка функции на интервале
+                bool functionValid = method.TestFunctionOnInterval(a, b);
+                if (!functionValid)
                 {
-                    double testX = (a + b) / 2;
-                    double testY = method.CalculateFunction(testX);
-                    Console.WriteLine($"  f({testX:F3}) = {testY:F6}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"  Тест не удался: {ex.Message}");
+                    MessageBox.Show("Функция не определена или имеет разрывы на заданном интервале.\nПопробуйте изменить интервал [a, b].",
+                                  "Ошибка функции", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
 
                 // Ищем экстремум
                 GoldenRatioResult result = method.FindGlobalExtremum(a, b, epsilon, _findMinimum);
 
-                // Формируем результат
-                int decimalPlaces = CalculateDecimalPlaces(epsilon);
+                // Определяем количество знаков после запятой как в методе дихотомии
+                int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
                 string extremumType = _findMinimum ? "минимума" : "максимума";
 
-                lblResult.Text = $"Точка {extremumType}: x = {result.ExtremumPoint.ToString($"F{decimalPlaces}")}\n" +
-                               $"Значение функции: f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}")}\n" +
+                // Формируем результат в одном TextBlock
+                lblResult.Text = $"Точка {extremumType} найдена!\n" +
+                               $"x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                               $"f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
                                $"Количество итераций: {result.Iterations}\n" +
                                $"Финальный интервал: [{result.FinalInterval.a.ToString($"F{decimalPlaces}")}, " +
                                $"{result.FinalInterval.b.ToString($"F{decimalPlaces}")}]";
 
+                // Для корня очищаем второе поле
                 lblRootResult.Text = "";
+
+                MessageBox.Show($"Найден {extremumType} функции f(x)\n\n" +
+                              $"Точка {extremumType}: x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                              $"Значение функции: f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                              $"Количество итераций: {result.Iterations}\n" +
+                              $"Точность ε = {epsilon}\n" +
+                              $"Ответ выводится с точностью до {decimalPlaces} знаков после запятой",
+                              $"Результат поиска {extremumType}", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 // Строим график
                 PlotGraphWithExtremum(a, b, result, method);
 
-                Console.WriteLine($"=== РАСЧЕТ ЗАВЕРШЕН ===");
-
+                _calculationPerformed = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}\n\n" +
-                               $"Совет: Попробуйте ввести функцию в одном из следующих форматов:\n" +
-                               $"1. (27-18*x+2*x^2)*exp(-x/3)\n" +
-                               $"2. (27-18*x+2*x^2)*e^(-x/3)\n" +
-                               $"3. sin(x)*exp(-x^2)",
-                    "Ошибка вычисления", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка вычисления", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private int CalculateDecimalPlaces(double epsilon)
         {
-            if (epsilon <= 0) return 3;
-
-            // Определяем количество знаков после запятой на основе точности
-            string epsilonStr = epsilon.ToString(CultureInfo.InvariantCulture);
-
-            if (epsilonStr.Contains('.'))
-            {
-                int decimalPlaces = epsilonStr.Split('.')[1].Length;
-                return Math.Min(decimalPlaces, 15); // Ограничиваем максимальное количество знаков
-            }
-
-            // Если epsilon целое число, используем 3 знака по умолчанию
-            return 3;
+            // Используем тот же подход, что и в методе дихотомии
+            return PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
         }
 
         private void FindRoot_Click(object sender, RoutedEventArgs e)
@@ -202,41 +173,85 @@ namespace WpfApp1
                 double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 string function = txtFunction.Text;
 
-                // НЕ форматируем точность - оставляем как ввел пользователь
-
                 function = PreprocessFunction(function);
 
+                // Автоматическая корректировка для логарифмов
+                if (function.ToLower().Contains("log") || function.ToLower().Contains("log10"))
+                {
+                    if (a <= 0)
+                    {
+                        MessageBox.Show("Внимание: логарифм не определен для x ≤ 0.\n" +
+                                      "Автоматически корректирую начало интервала на 0.001",
+                                      "Корректировка интервала", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        a = 0.001;
+                        txtA.Text = "0.001";
+                    }
+                }
+
                 GoldenRatioMethod method = new GoldenRatioMethod(function);
+
+                // Проверка функции на интервале
+                bool functionValid = method.TestFunctionOnInterval(a, b);
+                if (!functionValid)
+                {
+                    MessageBox.Show("Функция не определена или имеет разрывы на заданном интервале.\nПопробуйте изменить интервал [a, b].",
+                                  "Ошибка функции", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
                 try
                 {
                     GoldenRatioResult result = method.FindRoot(a, b, epsilon);
 
-                    // Определяем количество знаков после запятой для форматирования
-                    int decimalPlaces = CalculateDecimalPlaces(epsilon);
+                    // Определяем количество знаков после запятой
+                    int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                    lblResult.Text = $"Корень уравнения f(x) = 0:\n" +
-                                   $"x = {result.ExtremumPoint.ToString($"F{decimalPlaces}")}\n" +
-                                   $"f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}")}\n" +
+                    // Формируем результат в основном TextBlock
+                    lblResult.Text = $"Корень уравнения f(x) = 0 найден!\n" +
+                                   $"x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                                   $"f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
                                    $"Количество итераций: {result.Iterations}\n" +
-                                   $"Финальный интервал: [{result.FinalInterval.a.ToString($"F{decimalPlaces}")}, {result.FinalInterval.b.ToString($"F{decimalPlaces}")}]";
+                                   $"Финальный интервал: [{result.FinalInterval.a.ToString($"F{decimalPlaces}")}, " +
+                                   $"{result.FinalInterval.b.ToString($"F{decimalPlaces}")}]";
+
+                    // Для экстремума очищаем второе поле
+                    lblRootResult.Text = "";
+
+                    MessageBox.Show($"Найден корень уравнения f(x) = 0\n\n" +
+                                  $"Корень: x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                                  $"Значение функции: f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
+                                  $"Количество итераций: {result.Iterations}\n" +
+                                  $"Точность ε = {epsilon}\n" +
+                                  $"Ответ выводится с точностью до {decimalPlaces} знаков после запятой",
+                                  "Результат поиска корня", MessageBoxButton.OK, MessageBoxImage.Information);
 
                     PlotGraphWithRoot(a, b, result, method);
+
+                    _calculationPerformed = true;
                 }
                 catch (ArgumentException ex)
                 {
                     if (ex.Message.Contains("не меняет знак"))
                     {
+                        lblResult.Text = "Корень не найден\n" +
+                                       "Функция не меняет знак на заданном интервале [a, b].\n" +
+                                       "Попробуйте другой интервал или проверьте функцию.";
+                        lblRootResult.Text = "";
+
+                        PlotGraphWithRoot(a, b, null, method);
+
                         MessageBox.Show("Функция не меняет знак на заданном интервале [a, b].\n" +
-                                      "Попробуйте другой интервал или проверьте функцию.",
-                                      "Корень не найден", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                      "Попробуйте другой интервал или проверьте функцию.\n\n" +
+                                      "Рекомендации:\n" +
+                                      "- Измените интервал [a, b]\n" +
+                                      "- Убедитесь, что функция пересекает ось X на этом интервале",
+                                      "Корень не найден", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
                         throw;
                     }
                 }
-
             }
             catch (Exception ex)
             {
@@ -247,16 +262,20 @@ namespace WpfApp1
         private void PlotGraphWithExtremum(double a, double b, GoldenRatioResult result, GoldenRatioMethod method)
         {
             PlotModel.Series.Clear();
-            AddAxisLines(); // Добавляем линии осей заново
+            PlotModel.Annotations.Clear();
             _functionPoints.Clear();
             _extremumPoints.Clear();
 
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Для обработки разрывов создаем отдельные сегменты
+            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
+
+            // Найдем диапазон значений y для корректного отображения осей
+            double minY = double.MaxValue;
+            double maxY = double.MinValue;
 
             for (int i = 0; i <= pointsCount; i++)
             {
@@ -265,23 +284,28 @@ namespace WpfApp1
                 {
                     double y = method.CalculateFunction(x);
 
-                    // Проверяем на разрыв (большие скачки значений или NaN/Infinity)
+                    // Обновляем minY и maxY
+                    if (!double.IsNaN(y) && !double.IsInfinity(y))
+                    {
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+
+                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
                         double diff = Math.Abs(y - lastY);
 
-                        // Если разрыв слишком большой или значение некорректное - начинаем новый сегмент
                         if (double.IsNaN(y) || double.IsInfinity(y) ||
                             (diff > Math.Abs(lastY) * 100 && diff > 1000))
                         {
-                            // Завершаем текущий сегмент если в нем достаточно точек
                             if (currentSegment.Count > 1)
                             {
                                 segments.Add(new List<DataPoint>(currentSegment));
                             }
                             currentSegment.Clear();
-                            continue; // Пропускаем точку с разрывом
+                            continue;
                         }
                     }
 
@@ -289,7 +313,6 @@ namespace WpfApp1
                 }
                 catch
                 {
-                    // При ошибке вычисления завершаем текущий сегмент
                     if (currentSegment.Count > 1)
                     {
                         segments.Add(new List<DataPoint>(currentSegment));
@@ -304,15 +327,92 @@ namespace WpfApp1
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Добавляем все сегменты на график
+            // Корректируем minY и maxY если они не были найдены
+            if (minY == double.MaxValue) minY = -10;
+            if (maxY == double.MinValue) maxY = 10;
+
+            // Добавляем немного отступа сверху и снизу
+            double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
+            minY -= yPadding;
+            maxY += yPadding;
+
+            // Расширяем границы по x для лучшего отображения
+            double xPadding = Math.Abs(b - a) * 0.1;
+            double visibleA = a - xPadding;
+            double visibleB = b + xPadding;
+
+            // **Добавляем ось Y (x = 0) если она в пределах видимой области**
+            if (visibleA <= 0 && visibleB >= 0)
+            {
+                // Ось Y проходит через x=0 от minY до maxY
+                LineSeries yAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось Y (x = 0)"
+                };
+
+                yAxisSeries.Points.Add(new DataPoint(0, minY));
+                yAxisSeries.Points.Add(new DataPoint(0, maxY));
+                PlotModel.Series.Add(yAxisSeries);
+
+                // Подпись оси Y
+                var yAxisAnnotation = new TextAnnotation
+                {
+                    Text = "y",
+                    TextPosition = new DataPoint(0 - xPadding * 0.05, maxY - yPadding * 0.5),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(yAxisAnnotation);
+            }
+
+            // **Добавляем ось X (y = 0) если она в пределах видимой области**
+            if (minY <= 0 && maxY >= 0)
+            {
+                // Ось X проходит через y=0 от visibleA до visibleB
+                LineSeries xAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось X (y = 0)"
+                };
+
+                xAxisSeries.Points.Add(new DataPoint(visibleA, 0));
+                xAxisSeries.Points.Add(new DataPoint(visibleB, 0));
+                PlotModel.Series.Add(xAxisSeries);
+
+                // Подпись оси X
+                var xAxisAnnotation = new TextAnnotation
+                {
+                    Text = "x",
+                    TextPosition = new DataPoint(visibleB - xPadding * 0.25, 0 - yPadding * 0.15),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(xAxisAnnotation);
+            }
+
+            // Добавляем координатную сетку
+            PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[0].MajorGridlineThickness = 0.5;
+
+            PlotModel.Axes[1].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[1].MajorGridlineThickness = 0.5;
+
+            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
                 LineSeries segmentSeries = new LineSeries
                 {
                     Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                    StrokeThickness = 2,
-                    Title = segmentNumber == 0 ? "Функция" : null // Название только у первого сегмента
+                    StrokeThickness = 2.5,
+                    Title = segmentNumber == 0 ? "Функция f(x)" : null
                 };
 
                 foreach (var point in segment)
@@ -324,46 +424,113 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем точку экстремума
-            ScatterSeries extremumSeries = new ScatterSeries
+            // Добавляем найденный экстремум
+            if (result != null)
             {
-                Title = _findMinimum ? "Минимум" : "Максимум",
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 8,
-                MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
-                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                MarkerStrokeThickness = 2
-            };
-            extremumSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
-            PlotModel.Series.Add(extremumSeries);
+                ScatterSeries extremumSeries = new ScatterSeries
+                {
+                    Title = _findMinimum ? "Минимум" : "Максимум",
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 10,
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    MarkerStrokeThickness = 2
+                };
 
-            // Находим серию оси X (y = 0) и добавляем точки
-            var xAxisSeries = PlotModel.Series.FirstOrDefault(s => s.Title == "Ось X (y = 0)") as LineSeries;
-            if (xAxisSeries != null)
-            {
-                xAxisSeries.Points.Clear();
-                xAxisSeries.Points.Add(new DataPoint(a - Math.Abs(a * 0.1), 0));
-                xAxisSeries.Points.Add(new DataPoint(b + Math.Abs(b * 0.1), 0));
+                extremumSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
+
+                // Добавляем вертикальную пунктирную линию от экстремума до оси X
+                if (minY <= 0 && maxY >= 0)
+                {
+                    LineSeries extremumToXAxisSeries = new LineSeries
+                    {
+                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                        StrokeThickness = 1,
+                        LineStyle = LineStyle.Dash,
+                        Title = null
+                    };
+                    extremumToXAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, result.ExtremumValue));
+                    extremumToXAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, 0));
+                    PlotModel.Series.Add(extremumToXAxisSeries);
+                }
+
+                // Добавляем горизонтальную пунктирную линию от экстремума до оси Y
+                if (visibleA <= 0 && visibleB >= 0)
+                {
+                    LineSeries extremumToYAxisSeries = new LineSeries
+                    {
+                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                        StrokeThickness = 1,
+                        LineStyle = LineStyle.Dash,
+                        Title = null
+                    };
+                    extremumToYAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, result.ExtremumValue));
+                    extremumToYAxisSeries.Points.Add(new DataPoint(0, result.ExtremumValue));
+                    PlotModel.Series.Add(extremumToYAxisSeries);
+                }
+
+                // Определяем точность для отображения
+                double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+                int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
+
+                // Добавляем подпись с координатами экстремума
+                var extremumAnnotation = new TextAnnotation
+                {
+                    Text = $"({result.ExtremumPoint.ToString($"F{decimalPlaces}")}, {result.ExtremumValue.ToString($"F{decimalPlaces}")})",
+                    TextPosition = new DataPoint(result.ExtremumPoint + xPadding * 0.05, result.ExtremumValue + yPadding * 0.05),
+                    TextColor = OxyColor.FromRgb(0xFF, 0x6B, 0x8E),
+                    FontSize = 10,
+                    Background = OxyColor.FromArgb(200, 255, 255, 255)
+                };
+                PlotModel.Annotations.Add(extremumAnnotation);
+
+                PlotModel.Series.Add(extremumSeries);
             }
 
-            // Добавляем линию оси Y (x = 0) если она попадает в интервал
-            var yAxisSeries = PlotModel.Series.FirstOrDefault(s => s.Title == "Ось Y (x = 0)") as LineSeries;
-            if (yAxisSeries != null)
+            // Добавляем точку пересечения осей (0,0) если она видима
+            if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
-                yAxisSeries.Points.Clear();
-                // Находим минимальное и максимальное значение функции
-                double minY = double.MaxValue;
-                double maxY = double.MinValue;
-                foreach (var segment in segments)
+                ScatterSeries originSeries = new ScatterSeries
                 {
-                    foreach (var point in segment)
-                    {
-                        if (point.Y < minY) minY = point.Y;
-                        if (point.Y > maxY) maxY = point.Y;
-                    }
-                }
-                yAxisSeries.Points.Add(new DataPoint(0, minY - Math.Abs(minY * 0.1)));
-                yAxisSeries.Points.Add(new DataPoint(0, maxY + Math.Abs(maxY * 0.1)));
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 4,
+                    MarkerFill = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStroke = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStrokeThickness = 1,
+                    Title = "Начало координат"
+                };
+                originSeries.Points.Add(new ScatterPoint(0, 0));
+                PlotModel.Series.Add(originSeries);
+
+                var originAnnotation = new TextAnnotation
+                {
+                    Text = "(0,0)",
+                    TextPosition = new DataPoint(0 - xPadding * 0.1, 0 - yPadding * 0.1),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 9
+                };
+                PlotModel.Annotations.Add(originAnnotation);
+            }
+
+            // Обновляем границы осей для лучшего отображения
+            PlotModel.Axes[0].Minimum = visibleA;
+            PlotModel.Axes[0].Maximum = visibleB;
+            PlotModel.Axes[1].Minimum = minY;
+            PlotModel.Axes[1].Maximum = maxY;
+
+            // Добавляем информацию о значениях на концах интервала
+            try
+            {
+                double fa = method.CalculateFunction(a);
+                double fb = method.CalculateFunction(b);
+
+                string extremumType = _findMinimum ? "минимума" : "максимума";
+                PlotModel.Subtitle = $"Поиск {extremumType}: f({a:F2}) = {fa.ToString("E2", CultureInfo.InvariantCulture)}, f({b:F2}) = {fb.ToString("E2", CultureInfo.InvariantCulture)}";
+                PlotModel.SubtitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E);
+            }
+            catch
+            {
+                // Игнорируем ошибки при вычислении
             }
 
             PlotModel.InvalidatePlot(true);
@@ -372,16 +539,20 @@ namespace WpfApp1
         private void PlotGraphWithRoot(double a, double b, GoldenRatioResult result, GoldenRatioMethod method)
         {
             PlotModel.Series.Clear();
-            AddAxisLines(); // Добавляем линии осей заново
+            PlotModel.Annotations.Clear();
             _functionPoints.Clear();
             _rootPoints.Clear();
 
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Для обработки разрывов создаем отдельные сегменты
+            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
+
+            // Найдем диапазон значений y для корректного отображения осей
+            double minY = double.MaxValue;
+            double maxY = double.MinValue;
 
             for (int i = 0; i <= pointsCount; i++)
             {
@@ -390,23 +561,28 @@ namespace WpfApp1
                 {
                     double y = method.CalculateFunction(x);
 
-                    // Проверяем на разрыв (большие скачки значений или NaN/Infinity)
+                    // Обновляем minY и maxY
+                    if (!double.IsNaN(y) && !double.IsInfinity(y))
+                    {
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+
+                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
                         double diff = Math.Abs(y - lastY);
 
-                        // Если разрыв слишком большой или значение некорректное - начинаем новый сегмент
                         if (double.IsNaN(y) || double.IsInfinity(y) ||
                             (diff > Math.Abs(lastY) * 100 && diff > 1000))
                         {
-                            // Завершаем текущий сегмент если в нем достаточно точек
                             if (currentSegment.Count > 1)
                             {
                                 segments.Add(new List<DataPoint>(currentSegment));
                             }
                             currentSegment.Clear();
-                            continue; // Пропускаем точку с разрывом
+                            continue;
                         }
                     }
 
@@ -414,7 +590,6 @@ namespace WpfApp1
                 }
                 catch
                 {
-                    // При ошибке вычисления завершаем текущий сегмент
                     if (currentSegment.Count > 1)
                     {
                         segments.Add(new List<DataPoint>(currentSegment));
@@ -429,15 +604,92 @@ namespace WpfApp1
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Добавляем все сегменты на график
+            // Корректируем minY и maxY если они не были найдены
+            if (minY == double.MaxValue) minY = -10;
+            if (maxY == double.MinValue) maxY = 10;
+
+            // Добавляем немного отступа сверху и снизу
+            double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
+            minY -= yPadding;
+            maxY += yPadding;
+
+            // Расширяем границы по x для лучшего отображения
+            double xPadding = Math.Abs(b - a) * 0.1;
+            double visibleA = a - xPadding;
+            double visibleB = b + xPadding;
+
+            // **Добавляем ось Y (x = 0) если она в пределах видимой области**
+            if (visibleA <= 0 && visibleB >= 0)
+            {
+                // Ось Y проходит через x=0 от minY до maxY
+                LineSeries yAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось Y (x = 0)"
+                };
+
+                yAxisSeries.Points.Add(new DataPoint(0, minY));
+                yAxisSeries.Points.Add(new DataPoint(0, maxY));
+                PlotModel.Series.Add(yAxisSeries);
+
+                // Подпись оси Y
+                var yAxisAnnotation = new TextAnnotation
+                {
+                    Text = "y",
+                    TextPosition = new DataPoint(0 - xPadding * 0.05, maxY - yPadding * 0.5),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(yAxisAnnotation);
+            }
+
+            // **Добавляем ось X (y = 0) если она в пределах видимой области**
+            if (minY <= 0 && maxY >= 0)
+            {
+                // Ось X проходит через y=0 от visibleA до visibleB
+                LineSeries xAxisSeries = new LineSeries
+                {
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    StrokeThickness = 1.5,
+                    LineStyle = LineStyle.Solid,
+                    Title = "Ось X (y = 0)"
+                };
+
+                xAxisSeries.Points.Add(new DataPoint(visibleA, 0));
+                xAxisSeries.Points.Add(new DataPoint(visibleB, 0));
+                PlotModel.Series.Add(xAxisSeries);
+
+                // Подпись оси X
+                var xAxisAnnotation = new TextAnnotation
+                {
+                    Text = "x",
+                    TextPosition = new DataPoint(visibleB - xPadding * 0.25, 0 - yPadding * 0.15),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 12
+                };
+                PlotModel.Annotations.Add(xAxisAnnotation);
+            }
+
+            // Добавляем координатную сетку
+            PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[0].MajorGridlineThickness = 0.5;
+
+            PlotModel.Axes[1].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
+            PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
+            PlotModel.Axes[1].MajorGridlineThickness = 0.5;
+
+            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
                 LineSeries segmentSeries = new LineSeries
                 {
                     Color = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                    StrokeThickness = 2,
-                    Title = segmentNumber == 0 ? "Функция" : null
+                    StrokeThickness = 2.5,
+                    Title = segmentNumber == 0 ? "Функция f(x)" : null
                 };
 
                 foreach (var point in segment)
@@ -449,30 +701,116 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем точку корня
-            ScatterSeries rootSeries = new ScatterSeries
+            // Добавляем найденный корень
+            if (result != null)
             {
-                Title = "Корень",
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 8,
-                MarkerFill = OxyColor.FromRgb(0x4C, 0xAF, 0x50),
-                MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
-                MarkerStrokeThickness = 2
-            };
-            rootSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
-            PlotModel.Series.Add(rootSeries);
+                ScatterSeries rootSeries = new ScatterSeries
+                {
+                    Title = "Корень",
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 10,
+                    MarkerFill = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                    MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
+                    MarkerStrokeThickness = 2
+                };
 
-            // Добавляем горизонтальную линию y = 0
-            var zeroLineSeries = new LineSeries
+                rootSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
+
+                // Добавляем вертикальную пунктирную линию от корня до оси X
+                if (minY <= 0 && maxY >= 0)
+                {
+                    LineSeries rootToXAxisSeries = new LineSeries
+                    {
+                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                        StrokeThickness = 1,
+                        LineStyle = LineStyle.Dash,
+                        Title = null
+                    };
+                    rootToXAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, result.ExtremumValue));
+                    rootToXAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, 0));
+                    PlotModel.Series.Add(rootToXAxisSeries);
+                }
+
+                // Добавляем горизонтальную пунктирную линию от корня до оси Y
+                if (visibleA <= 0 && visibleB >= 0)
+                {
+                    LineSeries rootToYAxisSeries = new LineSeries
+                    {
+                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                        StrokeThickness = 1,
+                        LineStyle = LineStyle.Dash,
+                        Title = null
+                    };
+                    rootToYAxisSeries.Points.Add(new DataPoint(result.ExtremumPoint, result.ExtremumValue));
+                    rootToYAxisSeries.Points.Add(new DataPoint(0, result.ExtremumValue));
+                    PlotModel.Series.Add(rootToYAxisSeries);
+                }
+
+                // Определяем точность для отображения
+                double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+                int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
+
+                // Добавляем подпись с координатами корня
+                var rootAnnotation = new TextAnnotation
+                {
+                    Text = $"({result.ExtremumPoint.ToString($"F{decimalPlaces}")}, {result.ExtremumValue.ToString($"F{decimalPlaces}")})",
+                    TextPosition = new DataPoint(result.ExtremumPoint + xPadding * 0.05, result.ExtremumValue + yPadding * 0.05),
+                    TextColor = OxyColor.FromRgb(0x4C, 0xAF, 0x50),
+                    FontSize = 10,
+                    Background = OxyColor.FromArgb(200, 255, 255, 255)
+                };
+                PlotModel.Annotations.Add(rootAnnotation);
+
+                PlotModel.Series.Add(rootSeries);
+            }
+
+            // Добавляем точку пересечения осей (0,0) если она видима
+            if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
-                Title = "y = 0",
-                Color = OxyColor.FromArgb(128, 0x2C, 0x5F, 0x9E),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash
-            };
-            zeroLineSeries.Points.Add(new DataPoint(a - Math.Abs(a * 0.1), 0));
-            zeroLineSeries.Points.Add(new DataPoint(b + Math.Abs(b * 0.1), 0));
-            PlotModel.Series.Add(zeroLineSeries);
+                ScatterSeries originSeries = new ScatterSeries
+                {
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 4,
+                    MarkerFill = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStroke = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    MarkerStrokeThickness = 1,
+                    Title = "Начало координат"
+                };
+                originSeries.Points.Add(new ScatterPoint(0, 0));
+                PlotModel.Series.Add(originSeries);
+
+                var originAnnotation = new TextAnnotation
+                {
+                    Text = "(0,0)",
+                    TextPosition = new DataPoint(0 - xPadding * 0.1, 0 - yPadding * 0.1),
+                    TextColor = OxyColor.FromRgb(0x80, 0x80, 0x80),
+                    FontSize = 9
+                };
+                PlotModel.Annotations.Add(originAnnotation);
+            }
+
+            // Обновляем границы осей для лучшего отображения
+            PlotModel.Axes[0].Minimum = visibleA;
+            PlotModel.Axes[0].Maximum = visibleB;
+            PlotModel.Axes[1].Minimum = minY;
+            PlotModel.Axes[1].Maximum = maxY;
+
+            // Добавляем информацию о знаках на концах интервала
+            try
+            {
+                double fa = method.CalculateFunction(a);
+                double fb = method.CalculateFunction(b);
+
+                string signA = fa >= 0 ? "+" : "-";
+                string signB = fb >= 0 ? "+" : "-";
+
+                PlotModel.Subtitle = $"f(a) = {fa.ToString("E2", CultureInfo.InvariantCulture)} ({signA}), f(b) = {fb.ToString("E2", CultureInfo.InvariantCulture)} ({signB})";
+                PlotModel.SubtitleColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E);
+            }
+            catch
+            {
+                // Игнорируем ошибки при вычислении знаков
+            }
 
             PlotModel.InvalidatePlot(true);
         }
@@ -542,10 +880,16 @@ namespace WpfApp1
             txtEpsilon.Text = "0,001";
             txtFunction.Text = "x^2";
             cmbExtremumType.SelectedIndex = 0;
+
+            // Сбрасываем результаты
             lblResult.Text = "Результаты:";
             lblRootResult.Text = "";
+
             PlotModel.Series.Clear();
+            PlotModel.Annotations.Clear();
             PlotModel.InvalidatePlot(true);
+
+            _calculationPerformed = false;
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)
@@ -603,6 +947,68 @@ namespace WpfApp1
             }
 
             return result;
+        }
+
+        private void ShowHelp_Click(object sender, RoutedEventArgs e)
+        {
+            ShowFunctionHelp();
+        }
+
+        private void ShowFunctionHelp()
+        {
+            string helpText = @"СПРАВКА ПО ФУНКЦИЯМ
+
+Доступные математические функции:
+────────────────────────────────
+• Основные операции:
+  +    сложение           (x + 2)
+  -    вычитание          (x - 3)
+  *    умножение          (x * 4)
+  /    деление            (x / 5)
+  ^    возведение         (x^2, (x+1)^3)
+
+• Тригонометрические функции:
+  sin(x)    - синус
+  cos(x)    - косинус
+  tan(x)    - тангенс
+  atan(x)   - арктангенс
+
+• Экспоненциальные и логарифмические:
+  exp(x)    - экспонента (e^x)
+  sqrt(x)   - квадратный корень
+  log(x)    - натуральный логарифм
+  log(x, b) - логарифм по основанию b
+  log10(x)  - десятичный логарифм
+
+• Другие функции:
+  abs(x)    - абсолютное значение
+  pow(x, y) - x в степени y
+
+• Константы:
+  pi    - число π (3.14159...)
+  e     - число Эйлера (2.71828...)
+
+Примеры использования:
+─────────────────────
+1. Квадратичная: x^2 - 4*x + 4
+2. Тригонометрическая: sin(x) + cos(2*x)
+3. Экспоненциальная: (27-18*x+2*x^2)*exp(-x/3)
+4. Сложная функция: log(x+1) * sin(pi*x)
+5. Дробно-рациональная: (x^2 - 1)/(x + 2)
+
+Примечания:
+───────────
+• Для степеней используйте оператор ^ или pow()
+• Десятичные числа вводите с точкой: 0.001
+• Логарифм определён только для x > 0
+• Избегайте деления на ноль
+
+Требования к интервалу [a, b]:
+─────────────────────────────
+• a < b
+• Функция должна быть определена на интервале";
+
+            MessageBox.Show(helpText, "Справка по функциям", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

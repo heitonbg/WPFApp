@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NCalc;
 
 namespace WpfApp1
@@ -7,13 +8,33 @@ namespace WpfApp1
     public class NewtonMethod
     {
         private readonly Expression _expression;
+        private readonly DihotomyMethod _dihotomyHelper;
 
         public NewtonMethod(string function)
         {
-            _expression = new Expression(function.ToLower(), EvaluateOptions.IgnoreCase);
+            // Используем тот же процесс обработки функции, что и в DihotomyMethod
+            string processedFunction = function.ToLower();
+            _expression = new Expression(processedFunction, EvaluateOptions.IgnoreCase);
             _expression.Parameters["pi"] = Math.PI;
             _expression.Parameters["e"] = Math.E;
             _expression.EvaluateFunction += EvaluateFunction;
+            _expression.EvaluateParameter += EvaluateParameter;
+
+            // Создаем вспомогательный объект для проверки функции
+            _dihotomyHelper = new DihotomyMethod(function);
+        }
+
+        private void EvaluateParameter(string name, ParameterArgs args)
+        {
+            switch (name.ToLower())
+            {
+                case "pi":
+                    args.Result = Math.PI;
+                    break;
+                case "e":
+                    args.Result = Math.E;
+                    break;
+            }
         }
 
         private void EvaluateFunction(string name, FunctionArgs args)
@@ -25,6 +46,7 @@ namespace WpfApp1
                     case "sin": args.Result = Math.Sin(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
                     case "cos": args.Result = Math.Cos(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
                     case "tan": args.Result = Math.Tan(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
+                    case "atan": args.Result = Math.Atan(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
                     case "exp": args.Result = Math.Exp(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
                     case "sqrt": args.Result = Math.Sqrt(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
                     case "abs": args.Result = Math.Abs(Convert.ToDouble(args.Parameters[0].Evaluate())); break;
@@ -54,23 +76,37 @@ namespace WpfApp1
         {
             try
             {
+                if (Math.Abs(x) > 1e10)
+                {
+                    return double.MaxValue / 1000;
+                }
+
                 _expression.Parameters["x"] = x;
                 var result = _expression.Evaluate();
 
-                if (result == null)
-                    return double.MaxValue;
+                if (result is double doubleResult)
+                {
+                    if (double.IsInfinity(doubleResult) || double.IsNaN(doubleResult))
+                    {
+                        return double.MaxValue;
+                    }
+                    return doubleResult;
+                }
 
-                double value = Convert.ToDouble(result);
-
-                if (double.IsNaN(value) || double.IsInfinity(value))
-                    return double.MaxValue;
-
-                return value;
+                if (result is int intResult) return intResult;
+                if (result is decimal decimalResult) return (double)decimalResult;
+                return Convert.ToDouble(result);
             }
-            catch
+            catch (Exception ex)
             {
-                return double.MaxValue;
+                throw new ArgumentException($"Ошибка вычисления функции в точке x={x}: {ex.Message}");
             }
+        }
+
+        public bool TestFunctionOnInterval(double a, double b)
+        {
+            // Используем проверку из DihotomyMethod
+            return _dihotomyHelper.TestFunctionOnInterval(a, b);
         }
 
         public double CalculateFirstDerivative(double x, double h = 1e-6)
@@ -100,13 +136,36 @@ namespace WpfApp1
                 double f_minus = CalculateFunction(x - h);
 
                 if (f_x >= double.MaxValue - 1 || f_plus >= double.MaxValue - 1 || f_minus >= double.MaxValue - 1)
-                    return 1.0; 
+                    return 1.0;
 
                 return (f_plus - 2 * f_x + f_minus) / (h * h);
             }
             catch
             {
                 return 1.0;
+            }
+        }
+
+        public TangentLine CalculateTangentLine(double x)
+        {
+            try
+            {
+                double y = CalculateFunction(x);
+                double derivative = CalculateFirstDerivative(x);
+                double slope = derivative;
+                double intercept = y - slope * x;
+
+                return new TangentLine
+                {
+                    Slope = slope,
+                    Intercept = intercept,
+                    PointX = x,
+                    PointY = y
+                };
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -119,6 +178,8 @@ namespace WpfApp1
                 throw new ArgumentException("Начало интервала a должно быть меньше конца b");
 
             List<NewtonIteration> stepByStepIterations = new List<NewtonIteration>();
+            List<TangentLine> tangentLines = new List<TangentLine>();
+
             double x = Math.Max(a, Math.Min(x0, b));
             bool converged = false;
             bool foundMinimum = false;
@@ -127,7 +188,6 @@ namespace WpfApp1
 
             double fa = CalculateFunction(a);
             double fb = CalculateFunction(b);
-            double f_x0 = CalculateFunction(x);
 
             for (int i = 0; i < maxIterations; i++)
             {
@@ -142,6 +202,13 @@ namespace WpfApp1
                 if (double.IsInfinity(secondDerivative) || double.IsNaN(secondDerivative))
                     secondDerivative = 1.0;
 
+                // Сохраняем касательную для отображения
+                var tangent = CalculateTangentLine(x);
+                if (tangent != null && trackSteps)
+                {
+                    tangentLines.Add(tangent);
+                }
+
                 if (trackSteps)
                 {
                     stepByStepIterations.Add(new NewtonIteration
@@ -150,13 +217,15 @@ namespace WpfApp1
                         X = x,
                         FunctionValue = functionValue,
                         FirstDerivative = firstDerivative,
-                        SecondDerivative = secondDerivative
+                        SecondDerivative = secondDerivative,
+                        TangentLine = tangent
                     });
                 }
 
+                // Проверка условий сходимости
                 bool isMinimum = Math.Abs(firstDerivative) < epsilon && secondDerivative > 0;
-                bool isLeftBoundary = Math.Abs(x - a) < 1e-10 && firstDerivative > 0; 
-                bool isRightBoundary = Math.Abs(x - b) < 1e-10 && firstDerivative < 0; 
+                bool isLeftBoundary = Math.Abs(x - a) < epsilon && firstDerivative > 0;
+                bool isRightBoundary = Math.Abs(x - b) < epsilon && firstDerivative < 0;
 
                 if (isMinimum || isLeftBoundary || isRightBoundary)
                 {
@@ -168,12 +237,14 @@ namespace WpfApp1
                     break;
                 }
 
+                // Итерация Ньютона
                 double xNew;
-                if (Math.Abs(secondDerivative) > 1e-10)
+                if (Math.Abs(secondDerivative) > epsilon)
                 {
                     double newtonStep = -firstDerivative / secondDerivative;
 
-                    double maxStep = 1.0;
+                    // Ограничиваем шаг
+                    double maxStep = (b - a) / 10;
                     if (Math.Abs(newtonStep) > maxStep)
                     {
                         newtonStep = Math.Sign(newtonStep) * maxStep;
@@ -183,12 +254,15 @@ namespace WpfApp1
                 }
                 else
                 {
+                    // Если вторая производная слишком мала, используем градиентный спуск
                     double alpha = 0.1;
                     xNew = x - alpha * firstDerivative;
                 }
 
+                // Ограничиваем точку интервалом
                 xNew = Math.Max(a, Math.Min(xNew, b));
 
+                // Проверка сходимости по изменению x
                 if (Math.Abs(xNew - x) < epsilon)
                 {
                     converged = true;
@@ -198,8 +272,8 @@ namespace WpfApp1
                     double finalSecondDeriv = CalculateSecondDerivative(x);
 
                     bool finalIsMinimum = Math.Abs(finalFirstDeriv) < epsilon && finalSecondDeriv > 0;
-                    bool finalIsLeftBoundary = Math.Abs(x - a) < 1e-10 && finalFirstDeriv > 0;
-                    bool finalIsRightBoundary = Math.Abs(x - b) < 1e-10 && finalFirstDeriv < 0;
+                    bool finalIsLeftBoundary = Math.Abs(x - a) < epsilon && finalFirstDeriv > 0;
+                    bool finalIsRightBoundary = Math.Abs(x - b) < epsilon && finalFirstDeriv < 0;
 
                     if (finalIsMinimum || finalIsLeftBoundary || finalIsRightBoundary)
                     {
@@ -219,36 +293,33 @@ namespace WpfApp1
                 x = xNew;
             }
 
+            // Если минимум не найден, используем сканирование как в DihotomyMethod
             if (!foundMinimum)
             {
-                List<(double x, double value)> candidates = new List<(double, double)>();
-
-                candidates.Add((a, fa));
-                candidates.Add((b, fb));
-
-                candidates.Add((x, CalculateFunction(x)));
                 double scanPoint = FindMinimumByScan(a, b, 50);
-                candidates.Add((scanPoint, CalculateFunction(scanPoint)));
+                double scanValue = CalculateFunction(scanPoint);
 
-                var bestCandidate = candidates.OrderBy(c => c.value).First();
-
-                x = bestCandidate.x;
-                double bestValue = bestCandidate.value;
-
-                double deriv = CalculateFirstDerivative(x);
-                double secondDeriv = CalculateSecondDerivative(x);
-
-                bool isMin = Math.Abs(deriv) < epsilon && secondDeriv > 0;
-                bool isLeftMin = Math.Abs(x - a) < 1e-10 && deriv > 0;
-                bool isRightMin = Math.Abs(x - b) < 1e-10 && deriv < 0;
-
-                foundMinimum = isMin || isLeftMin || isRightMin;
+                // Сравниваем с границами
+                if (fa < scanValue && fa < fb)
+                {
+                    x = a;
+                    foundMinimum = Math.Abs(CalculateFirstDerivative(a)) < epsilon && CalculateSecondDerivative(a) > 0;
+                    convergenceMessage = foundMinimum ? "Минимум на левой границе" : "Лучшая точка на левой границе";
+                }
+                else if (fb < scanValue && fb < fa)
+                {
+                    x = b;
+                    foundMinimum = Math.Abs(CalculateFirstDerivative(b)) < epsilon && CalculateSecondDerivative(b) > 0;
+                    convergenceMessage = foundMinimum ? "Минимум на правой границе" : "Лучшая точка на правой границе";
+                }
+                else
+                {
+                    x = scanPoint;
+                    foundMinimum = Math.Abs(CalculateFirstDerivative(scanPoint)) < epsilon &&
+                                  CalculateSecondDerivative(scanPoint) > 0;
+                    convergenceMessage = foundMinimum ? "Локальный минимум (сканирование)" : "Лучшая точка (сканирование)";
+                }
                 converged = true;
-
-                if (isLeftMin) convergenceMessage = "Глобальный минимум на левой границе";
-                else if (isRightMin) convergenceMessage = "Глобальный минимум на правой границе";
-                else if (isMin) convergenceMessage = "Локальный минимум (поиск по сетке)";
-                else convergenceMessage = "Наилучшая найденная точка (возможный минимум)";
             }
 
             double minimumValue = CalculateFunction(x);
@@ -265,6 +336,7 @@ namespace WpfApp1
                 Converged = converged,
                 IsMinimum = foundMinimum,
                 StepByStepIterations = stepByStepIterations,
+                TangentLines = tangentLines,
                 ConvergenceMessage = convergenceMessage
             };
         }
@@ -290,14 +362,9 @@ namespace WpfApp1
             return bestX;
         }
 
-        private double FindBestPoint(double a, double b, int points)
-        {
-            return FindMinimumByScan(a, b, points);
-        }
-
         public double FindGoodStartingPoint(double a, double b, int samplePoints = 50)
         {
-            return FindBestPoint(a, b, samplePoints);
+            return FindMinimumByScan(a, b, samplePoints);
         }
     }
 
@@ -311,6 +378,7 @@ namespace WpfApp1
         public bool Converged { get; set; }
         public bool IsMinimum { get; set; }
         public List<NewtonIteration> StepByStepIterations { get; set; } = new List<NewtonIteration>();
+        public List<TangentLine> TangentLines { get; set; } = new List<TangentLine>();
         public string ConvergenceMessage { get; set; }
     }
 
@@ -321,5 +389,19 @@ namespace WpfApp1
         public double FunctionValue { get; set; }
         public double FirstDerivative { get; set; }
         public double SecondDerivative { get; set; }
+        public TangentLine TangentLine { get; set; }
+    }
+
+    public class TangentLine
+    {
+        public double Slope { get; set; }
+        public double Intercept { get; set; }
+        public double PointX { get; set; }
+        public double PointY { get; set; }
+
+        public double GetY(double x)
+        {
+            return Slope * x + Intercept;
+        }
     }
 }
