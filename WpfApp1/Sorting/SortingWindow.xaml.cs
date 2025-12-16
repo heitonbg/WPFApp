@@ -194,7 +194,6 @@ namespace WpfApp1
             visualizationCanvas.Children.Clear();
         }
 
-        // ============ GOOGLE SHEETS ПАРСИНГ ============
         private async Task ShowGoogleSheetsDialog()
         {
             try

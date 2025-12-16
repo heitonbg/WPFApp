@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,17 +8,16 @@ using Microsoft.Win32;
 using System.IO;
 using System.Diagnostics;
 using System.Windows.Threading;
-using System.Collections;
 using System.Net.Http;
 using System.Text;
 using System.Globalization;
 using System.Threading;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using OfficeOpenXml; 
 
 namespace WpfApp1
 {
-    // Класс для представления строки матрицы
     public class MatrixRow : ObservableCollection<double>, INotifyPropertyChanged
     {
         private int _rowIndex;
@@ -50,7 +48,6 @@ namespace WpfApp1
         }
     }
 
-    // Класс для представления вектора B
     public class VectorBItem : INotifyPropertyChanged
     {
         private double _value;
@@ -84,7 +81,6 @@ namespace WpfApp1
         }
     }
 
-    // Класс для представления решения X
     public class SolutionItem : INotifyPropertyChanged
     {
         private string _variable;
@@ -139,7 +135,9 @@ namespace WpfApp1
         private ObservableCollection<SolutionItem> solutionData = new ObservableCollection<SolutionItem>();
         private HttpClient httpClient = new HttpClient();
 
-        // Enum для определения формата данных
+        private double generateMinValue = -10;
+        private double generateMaxValue = 10;
+
         private enum DataFormatType
         {
             Unknown,
@@ -148,7 +146,6 @@ namespace WpfApp1
             LabeledSections
         }
 
-        // Класс для хранения результатов анализа данных
         private class DataAnalysisResult
         {
             public DataFormatType DataFormat { get; set; }
@@ -159,16 +156,70 @@ namespace WpfApp1
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+
+            OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // Устанавливаем контекст данных для DataGrid
             MatrixADataGrid.ItemsSource = matrixAData;
             VectorBDataGrid.ItemsSource = vectorBData;
             VectorXDataGrid.ItemsSource = solutionData;
 
             InitializeDataGrids();
+
+            LoadGenerationIntervals();
+        }
+
+        private void LoadGenerationIntervals()
+        {
+            try
+            {
+                string settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SLAU_Settings.txt");
+                if (File.Exists(settingsFile))
+                {
+                    var lines = File.ReadAllLines(settingsFile);
+                    if (lines.Length >= 2)
+                    {
+                        if (double.TryParse(lines[0], out double min))
+                            generateMinValue = min;
+                        if (double.TryParse(lines[1], out double max))
+                            generateMaxValue = max;
+                    }
+                }
+
+                txtMinValue.Text = generateMinValue.ToString();
+                txtMaxValue.Text = generateMaxValue.ToString();
+            }
+            catch { }
+        }
+
+        private void SaveGenerationIntervals()
+        {
+            try
+            {
+                if (double.TryParse(txtMinValue.Text, out double min) && double.TryParse(txtMaxValue.Text, out double max))
+                {
+                    generateMinValue = min;
+                    generateMaxValue = max;
+
+                    string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SLAU_Settings.txt");
+                    File.WriteAllLines(settingsPath, new[] { min.ToString(), max.ToString() });
+                }
+            }
+            catch { }
+        }
+
+        private void SaveGenerationIntervals_Click(object sender, RoutedEventArgs e)
+        {
+            SaveGenerationIntervals();
+            MessageBox.Show("Интервалы генерации сохранены", "Сохранено",
+                          MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            SaveGenerationIntervals();
         }
 
         private void InitializeDataGrids()
@@ -184,7 +235,6 @@ namespace WpfApp1
             {
                 matrixAData.Clear();
 
-                // Создаем столбцы для DataGrid
                 MatrixADataGrid.Columns.Clear();
 
                 for (int i = 0; i < matrixSize; i++)
@@ -198,7 +248,6 @@ namespace WpfApp1
                     MatrixADataGrid.Columns.Add(column);
                 }
 
-                // Создаем строки матрицы
                 for (int i = 0; i < matrixSize; i++)
                 {
                     var row = new MatrixRow(matrixSize);
@@ -222,7 +271,6 @@ namespace WpfApp1
 
                 VectorBDataGrid.Columns.Clear();
 
-                // Добавляем номер строки
                 VectorBDataGrid.Columns.Add(new DataGridTextColumn()
                 {
                     Header = "№",
@@ -231,7 +279,6 @@ namespace WpfApp1
                     IsReadOnly = true
                 });
 
-                // Добавляем значение
                 VectorBDataGrid.Columns.Add(new DataGridTextColumn()
                 {
                     Header = "Значение",
@@ -239,7 +286,6 @@ namespace WpfApp1
                     Width = new DataGridLength(100, DataGridLengthUnitType.Pixel)
                 });
 
-                // Создаем элементы вектора B
                 for (int i = 0; i < matrixSize; i++)
                 {
                     vectorBData.Add(new VectorBItem(i + 1, 0));
@@ -339,7 +385,6 @@ namespace WpfApp1
 
         private bool ValidateInputs()
         {
-            // Проверка матрицы A
             for (int i = 0; i < matrixSize && i < matrixAData.Count; i++)
             {
                 var row = matrixAData[i];
@@ -353,7 +398,6 @@ namespace WpfApp1
                 }
             }
 
-            // Проверка вектора B
             for (int i = 0; i < matrixSize && i < vectorBData.Count; i++)
             {
                 if (double.IsNaN(vectorBData[i].Value) || double.IsInfinity(vectorBData[i].Value))
@@ -372,7 +416,7 @@ namespace WpfApp1
             {
                 OpenFileDialog openFileDialog = new OpenFileDialog
                 {
-                    Filter = "CSV files (*.csv)|*.csv|Excel files (*.xlsx)|*.xlsx|Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                    Filter = "Excel файлы (*.xlsx)|*.xlsx|CSV файлы (*.csv)|*.csv|Text files (*.txt)|*.txt|All files (*.*)|*.*",
                     Title = "Импорт данных из Excel"
                 };
 
@@ -389,8 +433,7 @@ namespace WpfApp1
                     }
                     else if (extension == ".xlsx")
                     {
-                        MessageBox.Show("Для импорта из .xlsx файлов необходимо сначала экспортировать данные в CSV формат или использовать специализированные библиотеки.",
-                            "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await Task.Run(() => ImportDataFromExcel(openFileDialog.FileName));
                     }
                 }
             }
@@ -400,11 +443,810 @@ namespace WpfApp1
             }
         }
 
+        private void ImportDataFromExcel(string filePath)
+        {
+            try
+            {
+                using (var package = new ExcelPackage(new FileInfo(filePath)))
+                {
+                    if (package.Workbook.Worksheets.Count == 0)
+                    {
+                        Dispatcher.Invoke(() => ShowStatus("Ошибка: файл Excel не содержит листов", true));
+                        return;
+                    }
+
+                    var worksheet = package.Workbook.Worksheets[0];
+                    int startRow = worksheet.Dimension?.Start.Row ?? 1;
+                    int startCol = worksheet.Dimension?.Start.Column ?? 1;
+                    int endRow = worksheet.Dimension?.End.Row ?? 1;
+                    int endCol = worksheet.Dimension?.End.Column ?? 1;
+
+                    int matrixStartRow = -1, matrixStartCol = -1;
+                    int vectorStartRow = -1, vectorStartCol = -1;
+
+                    for (int row = startRow; row <= endRow; row++)
+                    {
+                        for (int col = startCol; col <= endCol; col++)
+                        {
+                            var cellValue = worksheet.Cells[row, col].Value?.ToString()?.ToLower();
+                            if (!string.IsNullOrEmpty(cellValue))
+                            {
+                                if (cellValue.Contains("матрица") || cellValue.Contains("matrix"))
+                                {
+                                    matrixStartRow = row + 1;
+                                    matrixStartCol = col;
+                                }
+                                else if (cellValue.Contains("вектор") || cellValue.Contains("vector"))
+                                {
+                                    vectorStartRow = row + 1;
+                                    vectorStartCol = col;
+                                }
+                            }
+                        }
+                    }
+
+                    if (matrixStartRow == -1)
+                    {
+                        matrixStartRow = startRow;
+                        matrixStartCol = startCol;
+                        vectorStartRow = endRow + 2;
+                        vectorStartCol = startCol;
+                    }
+
+                    int size = 0;
+                    List<double[]> matrixRows = new List<double[]>();
+
+                    for (int row = matrixStartRow; row <= endRow; row++)
+                    {
+                        var cellValue = worksheet.Cells[row, matrixStartCol].Value;
+                        if (cellValue == null || string.IsNullOrWhiteSpace(cellValue.ToString()))
+                            break;
+
+                        List<double> rowValues = new List<double>();
+                        for (int col = matrixStartCol; col < matrixStartCol + 50; col++) 
+                        {
+                            var value = worksheet.Cells[row, col].Value;
+                            if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
+                                break;
+
+                            if (double.TryParse(value.ToString().Replace(',', '.'),
+                                NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                            {
+                                rowValues.Add(num);
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        if (rowValues.Count >= 2) 
+                        {
+                            matrixRows.Add(rowValues.ToArray());
+                            size++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+
+                        if (size >= MAX_MATRIX_SIZE)
+                            break;
+                    }
+
+                    if (size >= 2 && size <= MAX_MATRIX_SIZE)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            matrixSize = size;
+                            UpdateMatrixSizeComboBox();
+                            InitializeDataGrids();
+
+                            for (int i = 0; i < size && i < matrixRows.Count; i++)
+                            {
+                                if (i < matrixAData.Count)
+                                {
+                                    var targetRow = matrixAData[i];
+                                    var sourceRow = matrixRows[i];
+                                    for (int j = 0; j < size && j < sourceRow.Length; j++)
+                                    {
+                                        targetRow[j] = sourceRow[j];
+                                    }
+                                }
+                            }
+
+                            List<double> vectorValues = new List<double>();
+                            for (int row = vectorStartRow; row <= endRow; row++)
+                            {
+                                var cellValue = worksheet.Cells[row, vectorStartCol].Value;
+                                if (cellValue == null || string.IsNullOrWhiteSpace(cellValue.ToString()))
+                                    break;
+
+                                if (double.TryParse(cellValue.ToString().Replace(',', '.'),
+                                    NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                                {
+                                    vectorValues.Add(num);
+                                }
+                                else
+                                {
+                                    break;
+                                }
+
+                                if (vectorValues.Count >= size)
+                                    break;
+                            }
+
+                            if (vectorValues.Count == 0 && matrixRows.Count > 0)
+                            {
+                                for (int col = matrixStartCol + size; col <= endCol; col++)
+                                {
+                                    var cellValue = worksheet.Cells[matrixStartRow, col].Value;
+                                    if (cellValue == null || string.IsNullOrWhiteSpace(cellValue.ToString()))
+                                        break;
+
+                                    if (double.TryParse(cellValue.ToString().Replace(',', '.'),
+                                        NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                                    {
+                                        vectorValues.Add(num);
+                                    }
+                                }
+                            }
+
+                            for (int i = 0; i < size && i < vectorValues.Count; i++)
+                            {
+                                if (i < vectorBData.Count)
+                                {
+                                    vectorBData[i].Value = vectorValues[i];
+                                }
+                            }
+
+                            MatrixADataGrid.Items.Refresh();
+                            VectorBDataGrid.Items.Refresh();
+
+                            ShowStatus($"Данные успешно импортированы из Excel. Размер: {size}x{size}", false);
+                        });
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
+                            ShowStatus($"Ошибка: не удалось определить матрицу в файле Excel", true));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() =>
+                    ShowStatus($"Ошибка при чтении файла Excel: {ex.Message}", true));
+            }
+        }
+
+        private void ExportToExcel_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "Excel файлы (*.xlsx)|*.xlsx|CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt",
+                    Title = "Экспорт данных",
+                    DefaultExt = ".xlsx"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    string extension = Path.GetExtension(saveFileDialog.FileName).ToLower();
+
+                    if (extension == ".xlsx")
+                    {
+                        ExportToExcelFile(saveFileDialog.FileName);
+                    }
+                    else
+                    {
+                        ExportToTextFile(saveFileDialog.FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при экспорте: {ex.Message}", true);
+            }
+        }
+
+        private void ExportToExcelFile(string filePath)
+        {
+            try
+            {
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("СЛАУ Данные");
+
+                    worksheet.Cells[1, 1].Value = "Матрица A";
+                    worksheet.Cells[1, 1].Style.Font.Bold = true;
+
+                    for (int i = 0; i < matrixAData.Count; i++)
+                    {
+                        var row = matrixAData[i];
+                        for (int j = 0; j < row.Count; j++)
+                        {
+                            worksheet.Cells[i + 2, j + 1].Value = row[j];
+                        }
+                    }
+
+                    int emptyRow = matrixAData.Count + 2;
+                    worksheet.Cells[emptyRow, 1].Value = "";
+
+                    worksheet.Cells[emptyRow + 1, 1].Value = "Вектор B";
+                    worksheet.Cells[emptyRow + 1, 1].Style.Font.Bold = true;
+
+                    for (int i = 0; i < vectorBData.Count; i++)
+                    {
+                        worksheet.Cells[emptyRow + 2 + i, 1].Value = vectorBData[i].Value;
+                    }
+
+                    if (solutionData.Count > 0)
+                    {
+                        int solutionRow = emptyRow + vectorBData.Count + 3;
+                        worksheet.Cells[solutionRow, 1].Value = "Решение (Вектор X)";
+                        worksheet.Cells[solutionRow, 1].Style.Font.Bold = true;
+
+                        for (int i = 0; i < solutionData.Count; i++)
+                        {
+                            worksheet.Cells[solutionRow + 1 + i, 1].Value = solutionData[i].Variable;
+                            worksheet.Cells[solutionRow + 1 + i, 2].Value = solutionData[i].Value;
+                        }
+
+                        if (!string.IsNullOrEmpty(ExecutionTimeTextBox.Text))
+                        {
+                            int timeRow = solutionRow + solutionData.Count + 2;
+                            worksheet.Cells[timeRow, 1].Value = "Время выполнения:";
+                            worksheet.Cells[timeRow, 2].Value = ExecutionTimeTextBox.Text;
+                        }
+                    }
+
+                    worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+                    package.SaveAs(new FileInfo(filePath));
+                    ShowStatus($"Данные экспортированы в Excel файл: {Path.GetFileName(filePath)}", false);
+
+                    var result = MessageBox.Show(
+                        "Файл Excel создан. Хотите открыть его?",
+                        "Экспорт завершен",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = filePath,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при экспорте в Excel: {ex.Message}", true);
+            }
+        }
+
+        private void ExportToTextFile(string filePath)
+        {
+            try
+            {
+                using (var writer = new StreamWriter(filePath, false, Encoding.UTF8))
+                {
+                    var invariantCulture = CultureInfo.InvariantCulture;
+
+                    writer.WriteLine("Матрица A");
+                    for (int i = 0; i < matrixAData.Count; i++)
+                    {
+                        var row = matrixAData[i];
+                        var formattedRow = row.Select(val => val.ToString("0.######", invariantCulture));
+                        writer.WriteLine(string.Join(",", formattedRow));
+                    }
+
+                    writer.WriteLine();
+
+                    writer.WriteLine("Вектор B");
+                    for (int i = 0; i < vectorBData.Count; i++)
+                    {
+                        var item = vectorBData[i];
+                        writer.WriteLine(item.Value.ToString("0.######", invariantCulture));
+                    }
+
+                    writer.WriteLine();
+
+                    if (solutionData.Count > 0)
+                    {
+                        writer.WriteLine("Вектор X");
+                        foreach (var item in solutionData)
+                        {
+                            string value = item.Value.ToString("0.######", invariantCulture);
+                            writer.WriteLine($"{item.Variable},{value}");
+                        }
+                    }
+                }
+
+                ShowStatus($"Данные экспортированы в файл: {Path.GetFileName(filePath)}", false);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при экспорте в файл: {ex.Message}", true);
+            }
+        }
+
+        private void GenerateData_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!double.TryParse(txtMinValue.Text, out double minValue))
+                {
+                    ShowStatus("Ошибка: некорректное минимальное значение", true);
+                    return;
+                }
+
+                if (!double.TryParse(txtMaxValue.Text, out double maxValue))
+                {
+                    ShowStatus("Ошибка: некорректное максимальное значение", true);
+                    return;
+                }
+
+                if (minValue >= maxValue)
+                {
+                    ShowStatus("Ошибка: минимальное значение должно быть меньше максимального", true);
+                    return;
+                }
+
+                SaveGenerationIntervals();
+
+                var random = new Random();
+
+                for (int i = 0; i < matrixAData.Count; i++)
+                {
+                    var row = matrixAData[i];
+                    for (int j = 0; j < row.Count; j++)
+                    {
+                        row[j] = Math.Round(minValue + random.NextDouble() * (maxValue - minValue), 2);
+                    }
+                }
+                MatrixADataGrid.Items.Refresh();
+
+                for (int i = 0; i < vectorBData.Count; i++)
+                {
+                    vectorBData[i].Value = Math.Round(minValue + random.NextDouble() * (maxValue - minValue), 2);
+                }
+                VectorBDataGrid.Items.Refresh();
+
+                solutionData.Clear();
+                ExecutionTimeTextBox.Text = "";
+
+                ShowStatus($"Данные сгенерированы в диапазоне от {minValue} до {maxValue}", false);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при генерации данных: {ex.Message}", true);
+            }
+        }
+
+        private bool IsAnyMethodSelected()
+        {
+            return (chkGauss.IsChecked == true ||
+                   chkJordanGauss.IsChecked == true ||
+                   chkCramer.IsChecked == true);
+        }
+
+        private void SelectAllMethods_Click(object sender, RoutedEventArgs e)
+        {
+            chkGauss.IsChecked = true;
+            chkJordanGauss.IsChecked = true;
+            chkCramer.IsChecked = true;
+        }
+
+        private void DeselectAllMethods_Click(object sender, RoutedEventArgs e)
+        {
+            chkGauss.IsChecked = false;
+            chkJordanGauss.IsChecked = false;
+            chkCramer.IsChecked = false;
+        }
+
+        private async void SolveAllSelectedMethods_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ValidateInputs()) return;
+
+            if (!IsAnyMethodSelected())
+            {
+                ShowStatus("Ошибка: выберите хотя бы один метод решения", true);
+                return;
+            }
+
+            solutionData.Clear();
+            ExecutionTimeTextBox.Text = "";
+
+            List<Task<(string method, double[] solution, TimeSpan time)>> tasks = new List<Task<(string, double[], TimeSpan)>>();
+            var A = GetMatrixA();
+            var B = GetVectorB();
+
+            ShowStatus("Выполнение выбранных методов...", false);
+            var totalStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                if (chkGauss.IsChecked == true)
+                {
+                    tasks.Add(Task.Run(() =>
+                    {
+                        var sw = Stopwatch.StartNew();
+                        var solution = SolveByGauss(A, B);
+                        sw.Stop();
+                        return ("Гаусса", solution, sw.Elapsed);
+                    }));
+                }
+
+                if (chkJordanGauss.IsChecked == true)
+                {
+                    tasks.Add(Task.Run(() =>
+                    {
+                        var sw = Stopwatch.StartNew();
+                        var solution = SolveByJordanGauss(A, B);
+                        sw.Stop();
+                        return ("Жордана-Гаусса", solution, sw.Elapsed);
+                    }));
+                }
+
+                if (chkCramer.IsChecked == true)
+                {
+                    if (matrixSize > 10)
+                    {
+                        var result = MessageBox.Show(
+                            $"Метод Крамера очень медленный для матриц размером {matrixSize}x{matrixSize}. " +
+                            "Выполнение может занять длительное время.\n\n" +
+                            "Продолжить?",
+                            "Предупреждение",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Warning);
+
+                        if (result != MessageBoxResult.Yes)
+                            return;
+                    }
+
+                    tasks.Add(Task.Run(() =>
+                    {
+                        var sw = Stopwatch.StartNew();
+                        var solution = SolveByCramer(A, B);
+                        sw.Stop();
+                        return ("Крамера", solution, sw.Elapsed);
+                    }));
+                }
+
+                var results = await Task.WhenAll(tasks);
+                totalStopwatch.Stop();
+
+                var fastestMethod = results.OrderBy(r => r.time).First();
+
+                DisplayMultipleSolutions(results, fastestMethod.method, totalStopwatch.Elapsed);
+
+                ShowStatus($"Все выбранные методы выполнены. Самый быстрый: {fastestMethod.method}", false);
+            }
+            catch (Exception ex)
+            {
+                totalStopwatch.Stop();
+                ShowStatus($"Ошибка: {ex.Message}", true);
+            }
+        }
+
+        private void DisplayMultipleSolutions((string method, double[] solution, TimeSpan time)[] results, string fastestMethod, TimeSpan totalTime)
+        {
+            solutionData.Clear();
+
+            var fastestResult = results.First(r => r.method == fastestMethod);
+            for (int i = 0; i < fastestResult.solution.Length; i++)
+            {
+                solutionData.Add(new SolutionItem($"x{i + 1}", Math.Round(fastestResult.solution[i], 6)));
+            }
+
+            StringBuilder timeInfo = new StringBuilder();
+            timeInfo.AppendLine("Время по методам:");
+
+            foreach (var result in results.OrderBy(r => r.time))
+            {
+                string fastestMarker = result.method == fastestMethod ? " [БЫСТРЕЙШИЙ]" : "";
+                timeInfo.AppendLine($"{result.method}: {result.time.TotalMilliseconds:F4} мс{fastestMarker}");
+            }
+
+            ExecutionTimeTextBox.Text = timeInfo.ToString();
+        }
+
+        private async void GaussMethod_Click(object sender, RoutedEventArgs e)
+        {
+            await ExecuteSingleMethod("Гаусса", SolveByGauss);
+        }
+
+        private async void JordanGaussMethod_Click(object sender, RoutedEventArgs e)
+        {
+            await ExecuteSingleMethod("Жордана-Гаусса", SolveByJordanGauss);
+        }
+
+        private async void CramerMethod_Click(object sender, RoutedEventArgs e)
+        {
+            if (matrixSize > 10)
+            {
+                var result = MessageBox.Show(
+                    $"Метод Крамера очень медленный для матриц размером {matrixSize}x{matrixSize}. " +
+                    "Выполнение может занять длительное время.\n\n" +
+                    "Продолжить?",
+                    "Предупреждение",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
+            await ExecuteSingleMethod("Крамера", SolveByCramer);
+        }
+
+        private async Task ExecuteSingleMethod(string methodName, Func<double[,], double[], double[]> solver)
+        {
+            if (!ValidateInputs()) return;
+
+            ShowStatus($"Вычисление методом {methodName}...", false);
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                var A = GetMatrixA();
+                var B = GetVectorB();
+
+                var result = await Task.Run(() => solver(A, B));
+                stopwatch.Stop();
+
+                DisplaySolution(result, stopwatch.Elapsed);
+                ShowStatus($"Решение найдено методом {methodName}", false);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                ShowStatus($"Ошибка: {ex.Message}", true);
+            }
+        }
+
+        private double[] SolveByGauss(double[,] A, double[] B)
+        {
+            int n = B.Length;
+            double[] x = new double[n];
+            double[,] matrix = new double[n, n + 1];
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    matrix[i, j] = A[i, j];
+                }
+                matrix[i, n] = B[i];
+            }
+
+            for (int k = 0; k < n; k++)
+            {
+                int maxRow = k;
+                double maxVal = Math.Abs(matrix[k, k]);
+                for (int i = k + 1; i < n; i++)
+                {
+                    if (Math.Abs(matrix[i, k]) > maxVal)
+                    {
+                        maxVal = Math.Abs(matrix[i, k]);
+                        maxRow = i;
+                    }
+                }
+
+                if (maxRow != k)
+                {
+                    for (int j = k; j < n + 1; j++)
+                    {
+                        (matrix[k, j], matrix[maxRow, j]) = (matrix[maxRow, j], matrix[k, j]);
+                    }
+                }
+
+                for (int i = k + 1; i < n; i++)
+                {
+                    double factor = matrix[i, k] / matrix[k, k];
+                    for (int j = k; j < n + 1; j++)
+                    {
+                        matrix[i, j] -= factor * matrix[k, j];
+                    }
+                }
+            }
+
+            for (int i = n - 1; i >= 0; i--)
+            {
+                x[i] = matrix[i, n];
+                for (int j = i + 1; j < n; j++)
+                {
+                    x[i] -= matrix[i, j] * x[j];
+                }
+                x[i] /= matrix[i, i];
+            }
+
+            return x;
+        }
+
+        private double[] SolveByJordanGauss(double[,] A, double[] B)
+        {
+            int n = B.Length;
+            double[,] matrix = new double[n, n + 1];
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    matrix[i, j] = A[i, j];
+                }
+                matrix[i, n] = B[i];
+            }
+
+            for (int k = 0; k < n; k++)
+            {
+                double divisor = matrix[k, k];
+                for (int j = k; j < n + 1; j++)
+                {
+                    matrix[k, j] /= divisor;
+                }
+
+                for (int i = 0; i < n; i++)
+                {
+                    if (i != k)
+                    {
+                        double factor = matrix[i, k];
+                        for (int j = k; j < n + 1; j++)
+                        {
+                            matrix[i, j] -= factor * matrix[k, j];
+                        }
+                    }
+                }
+            }
+
+            double[] x = new double[n];
+            for (int i = 0; i < n; i++)
+            {
+                x[i] = matrix[i, n];
+            }
+
+            return x;
+        }
+
+        private double[] SolveByCramer(double[,] A, double[] B)
+        {
+            int n = B.Length;
+
+            double[] x = new double[n];
+            double mainDet = Determinant(A);
+
+            if (Math.Abs(mainDet) < 1e-12)
+                throw new Exception("Определитель матрицы A равен нулю. Метод Крамера не применим.");
+
+            for (int i = 0; i < n; i++)
+            {
+                double[,] tempMatrix = (double[,])A.Clone();
+                for (int j = 0; j < n; j++)
+                {
+                    tempMatrix[j, i] = B[j];
+                }
+                x[i] = Determinant(tempMatrix) / mainDet;
+            }
+
+            return x;
+        }
+
+        private double Determinant(double[,] matrix)
+        {
+            int n = (int)Math.Sqrt(matrix.Length);
+            if (n == 1) return matrix[0, 0];
+            if (n == 2) return matrix[0, 0] * matrix[1, 1] - matrix[0, 1] * matrix[1, 0];
+
+            double det = 0;
+            for (int j = 0; j < n; j++)
+            {
+                det += (j % 2 == 0 ? 1 : -1) * matrix[0, j] * Determinant(GetMinor(matrix, 0, j));
+            }
+            return det;
+        }
+
+        private double[,] GetMinor(double[,] matrix, int row, int col)
+        {
+            int n = (int)Math.Sqrt(matrix.Length);
+            double[,] minor = new double[n - 1, n - 1];
+
+            for (int i = 0, mi = 0; i < n; i++)
+            {
+                if (i == row) continue;
+                for (int j = 0, mj = 0; j < n; j++)
+                {
+                    if (j == col) continue;
+                    minor[mi, mj] = matrix[i, j];
+                    mj++;
+                }
+                mi++;
+            }
+            return minor;
+        }
+
+        private void DisplaySolution(double[] solution, TimeSpan time)
+        {
+            solutionData.Clear();
+
+            if (solution.Length > 20)
+            {
+                VectorXDataGrid.Height = 300;
+            }
+            else if (solution.Length > 10)
+            {
+                VectorXDataGrid.Height = 200;
+            }
+            else
+            {
+                VectorXDataGrid.Height = 120;
+            }
+
+            for (int i = 0; i < solution.Length; i++)
+            {
+                solutionData.Add(new SolutionItem($"x{i + 1}", Math.Round(solution[i], 6)));
+            }
+
+            ExecutionTimeTextBox.Text = $"{time.TotalMilliseconds:F4} мс";
+        }
+
+        private void ShowStatus(string message, bool isError)
+        {
+            if (StatusBorder == null || StatusTextBlock == null) return;
+
+            Dispatcher.Invoke(() =>
+            {
+                StatusBorder.Visibility = Visibility.Visible;
+                StatusTextBlock.Text = message;
+                StatusBorder.Background = isError ?
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 230, 230)) :
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 230));
+                StatusBorder.BorderBrush = isError ?
+                    System.Windows.Media.Brushes.Red :
+                    System.Windows.Media.Brushes.Green;
+            });
+        }
+
+        private void ClearData_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                for (int i = 0; i < matrixAData.Count; i++)
+                {
+                    var row = matrixAData[i];
+                    for (int j = 0; j < row.Count; j++)
+                    {
+                        row[j] = 0;
+                    }
+                }
+                MatrixADataGrid.Items.Refresh();
+
+                for (int i = 0; i < vectorBData.Count; i++)
+                {
+                    vectorBData[i].Value = 0;
+                }
+                VectorBDataGrid.Items.Refresh();
+
+                solutionData.Clear();
+                ExecutionTimeTextBox.Text = "";
+                StatusBorder.Visibility = Visibility.Collapsed;
+
+                ShowStatus("Данные очищены", false);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при очистке данных: {ex.Message}", true);
+            }
+        }
+
         private async void ImportFromGoogleTables_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Показываем диалог для ввода URL Google Таблицы
                 GoogleSheetsDialogWindow dialogWindow = new GoogleSheetsDialogWindow();
                 dialogWindow.Owner = this;
 
@@ -425,11 +1267,8 @@ namespace WpfApp1
             try
             {
                 ShowStatus("Подключение к Google Таблицам...", false);
-
-                // Конвертируем URL Google Таблицы в CSV URL
                 string csvUrl = ConvertGoogleSheetsUrlToCsv(url);
 
-                // Загружаем данные с таймаутом
                 using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
                     var response = await httpClient.GetAsync(csvUrl, timeoutCts.Token);
@@ -444,8 +1283,6 @@ namespace WpfApp1
                     }
 
                     ShowStatus("Анализ данных...", false);
-
-                    // Анализируем и импортируем данные
                     await AnalyzeAndImportGoogleSheetsData(csvContent);
                 }
             }
@@ -469,7 +1306,6 @@ namespace WpfApp1
             {
                 try
                 {
-                    // Разбиваем на строки и очищаем
                     var lines = csvContent.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(line => line.Trim())
                         .Where(line => !string.IsNullOrWhiteSpace(line))
@@ -481,7 +1317,6 @@ namespace WpfApp1
                         return;
                     }
 
-                    // Анализируем структуру данных
                     var analysisResult = AnalyzeDataStructure(lines);
 
                     switch (analysisResult.DataFormat)
@@ -512,7 +1347,6 @@ namespace WpfApp1
 
         private DataAnalysisResult AnalyzeDataStructure(string[] lines)
         {
-            // Проверяем, есть ли метки
             bool hasMatrixLabel = lines.Any(l => l.ToLower().Contains("матрица") || l.ToLower().Contains("matrix"));
             bool hasVectorLabel = lines.Any(l => l.ToLower().Contains("вектор") || l.ToLower().Contains("vector"));
 
@@ -525,12 +1359,10 @@ namespace WpfApp1
                 };
             }
 
-            // Анализируем первую строку для определения формата
             var firstLineParts = lines[0].Split(',');
             int cols = firstLineParts.Length;
             int rows = lines.Length;
 
-            // Проверяем, является ли последний столбец вектором B
             bool lastColumnIsVector = DetectIfLastColumnIsVector(lines);
 
             if (lastColumnIsVector && rows == cols - 1)
@@ -569,20 +1401,17 @@ namespace WpfApp1
                     var parts = lines[i].Split(',');
                     if (parts.Length < 2) return false;
 
-                    // Проверяем, что все строки имеют одинаковое количество столбцов
                     if (i > 0)
                     {
                         var prevParts = lines[i - 1].Split(',');
                         if (parts.Length != prevParts.Length) return false;
                     }
 
-                    // Пытаемся распарсить все значения
                     for (int j = 0; j < parts.Length; j++)
                     {
                         string value = parts[j].Trim();
                         if (!double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
                         {
-                            // Если не число, проверяем специальные случаи
                             if (!string.IsNullOrWhiteSpace(value) &&
                                 !value.Equals("-") &&
                                 !value.Equals(".") &&
@@ -626,7 +1455,6 @@ namespace WpfApp1
 
                     if (inMatrixSection)
                     {
-                        // Проверяем, является ли строка данными матрицы
                         var parts = line.Split(',');
                         bool isDataRow = parts.All(p =>
                             double.TryParse(p.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out _));
@@ -654,12 +1482,10 @@ namespace WpfApp1
                 return;
             }
 
-            // Обновляем размер
             matrixSize = size;
             UpdateMatrixSizeComboBox();
             InitializeDataGrids();
 
-            // Импортируем данные
             for (int i = 0; i < size && i < lines.Length; i++)
             {
                 var parts = lines[i].Split(',');
@@ -774,7 +1600,6 @@ namespace WpfApp1
                     }
                 }
 
-                // Определяем размер матрицы
                 int detectedSize = tempMatrixData.Count;
 
                 if (detectedSize > 0 && detectedSize <= MAX_MATRIX_SIZE)
@@ -783,7 +1608,6 @@ namespace WpfApp1
                     UpdateMatrixSizeComboBox();
                     InitializeDataGrids();
 
-                    // Заполняем матрицу A
                     for (int i = 0; i < detectedSize && i < tempMatrixData.Count; i++)
                     {
                         if (i < matrixAData.Count)
@@ -798,7 +1622,6 @@ namespace WpfApp1
                         }
                     }
 
-                    // Заполняем вектор B если есть данные
                     if (tempVectorData.Count > 0)
                     {
                         for (int i = 0; i < detectedSize && i < tempVectorData.Count; i++)
@@ -845,15 +1668,12 @@ namespace WpfApp1
         {
             try
             {
-                // Нормализуем URL
                 if (!url.StartsWith("http"))
                 {
                     url = "https://" + url;
                 }
 
                 Uri uri = new Uri(url);
-
-                // Извлекаем ID таблицы
                 var segments = uri.Segments;
                 string spreadsheetId = "";
 
@@ -869,7 +1689,6 @@ namespace WpfApp1
 
                 if (string.IsNullOrEmpty(spreadsheetId))
                 {
-                    // Альтернативный способ извлечения ID
                     var match = System.Text.RegularExpressions.Regex.Match(
                         url, @"/spreadsheets/d/([a-zA-Z0-9-_]+)");
                     if (match.Success)
@@ -883,7 +1702,6 @@ namespace WpfApp1
                     throw new ArgumentException("Не удалось извлечь ID таблицы из URL");
                 }
 
-                // Извлекаем GID (ID листа)
                 string gid = "0";
                 if (uri.Fragment.Contains("gid="))
                 {
@@ -891,7 +1709,6 @@ namespace WpfApp1
                 }
                 else
                 {
-                    // Пробуем извлечь из query параметров
                     var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
                     if (query["gid"] != null)
                     {
@@ -899,7 +1716,6 @@ namespace WpfApp1
                     }
                 }
 
-                // Формируем CSV URL
                 return $"https://docs.google.com/spreadsheets/d/{spreadsheetId}/export?format=csv&gid={gid}";
             }
             catch (Exception ex)
@@ -914,35 +1730,88 @@ namespace WpfApp1
             {
                 SaveFileDialog saveFileDialog = new SaveFileDialog
                 {
-                    Filter = "CSV files (*.csv)|*.csv",
-                    Title = "Создать шаблон CSV",
-                    FileName = "шаблон_матрицы.csv"
+                    Filter = "Excel файлы (*.xlsx)|*.xlsx|CSV файлы (*.csv)|*.csv",
+                    Title = "Создать шаблон",
+                    FileName = "шаблон_матрицы.xlsx",
+                    DefaultExt = ".xlsx"
                 };
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    using (var writer = new StreamWriter(saveFileDialog.FileName, false, System.Text.Encoding.UTF8))
+                    string extension = Path.GetExtension(saveFileDialog.FileName).ToLower();
+
+                    if (extension == ".xlsx")
                     {
-                        writer.WriteLine("Матрица A");
-                        writer.WriteLine("1,0,0");
-                        writer.WriteLine("0,1,0");
-                        writer.WriteLine("0,0,1");
-                        writer.WriteLine("");
-                        writer.WriteLine("Вектор B");
-                        writer.WriteLine("1");
-                        writer.WriteLine("2");
-                        writer.WriteLine("3");
-                        writer.WriteLine("");
-                        writer.WriteLine("// Инструкция:");
-                        writer.WriteLine("// 1. Замените числа в матрице A и векторе B своими значениями");
-                        writer.WriteLine("// 2. Сохраните файл");
-                        writer.WriteLine("// 3. Импортируйте через меню 'Файл → Импорт данных'");
+                        CreateExcelTemplate(saveFileDialog.FileName);
+                    }
+                    else
+                    {
+                        CreateCsvTemplate(saveFileDialog.FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при создании шаблона: {ex.Message}", true);
+            }
+        }
+
+        private void CreateExcelTemplate(string filePath)
+        {
+            try
+            {
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Шаблон СЛАУ");
+
+                    worksheet.Cells[1, 1].Value = "ШАБЛОН ДЛЯ СЛАУ A∙X + B = 0";
+                    worksheet.Cells[1, 1].Style.Font.Bold = true;
+                    worksheet.Cells[1, 1].Style.Font.Size = 14;
+
+                    worksheet.Cells[3, 1].Value = "Инструкция:";
+                    worksheet.Cells[3, 1].Style.Font.Bold = true;
+                    worksheet.Cells[4, 1].Value = "1. Замените значения в матрице A и векторе B";
+                    worksheet.Cells[5, 1].Value = "2. Сохраните файл";
+                    worksheet.Cells[6, 1].Value = "3. Импортируйте через меню 'Файл → Импорт данных'";
+
+                    worksheet.Cells[8, 1].Value = "";
+
+                    worksheet.Cells[9, 1].Value = "Матрица A (3x3 пример)";
+                    worksheet.Cells[9, 1].Style.Font.Bold = true;
+
+                    double[,] exampleMatrix = {
+                        {2, 1, -1},
+                        {-3, -1, 2},
+                        {-2, 1, 2}
+                    };
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        for (int j = 0; j < 3; j++)
+                        {
+                            worksheet.Cells[10 + i, 1 + j].Value = exampleMatrix[i, j];
+                        }
                     }
 
-                    ShowStatus($"Шаблон создан: {saveFileDialog.FileName}", false);
+                    worksheet.Cells[14, 1].Value = "";
+
+                    worksheet.Cells[15, 1].Value = "Вектор B";
+                    worksheet.Cells[15, 1].Style.Font.Bold = true;
+
+                    double[] exampleVector = { 8, -11, -3 };
+                    for (int i = 0; i < 3; i++)
+                    {
+                        worksheet.Cells[16 + i, 1].Value = exampleVector[i];
+                    }
+
+                    worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+                    package.SaveAs(new FileInfo(filePath));
+
+                    ShowStatus($"Шаблон Excel создан: {Path.GetFileName(filePath)}", false);
 
                     var result = MessageBox.Show(
-                        "Шаблон CSV файла создан. Хотите открыть его для редактирования?",
+                        "Шаблон Excel файла создан. Хотите открыть его для редактирования?",
                         "Шаблон создан",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
@@ -951,7 +1820,7 @@ namespace WpfApp1
                     {
                         Process.Start(new ProcessStartInfo
                         {
-                            FileName = saveFileDialog.FileName,
+                            FileName = filePath,
                             UseShellExecute = true
                         });
                     }
@@ -959,7 +1828,52 @@ namespace WpfApp1
             }
             catch (Exception ex)
             {
-                ShowStatus($"Ошибка при создании шаблона: {ex.Message}", true);
+                ShowStatus($"Ошибка при создании шаблона Excel: {ex.Message}", true);
+            }
+        }
+
+        private void CreateCsvTemplate(string filePath)
+        {
+            try
+            {
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    writer.WriteLine("Матрица A");
+                    writer.WriteLine("2,1,-1");
+                    writer.WriteLine("-3,-1,2");
+                    writer.WriteLine("-2,1,2");
+                    writer.WriteLine("");
+                    writer.WriteLine("Вектор B");
+                    writer.WriteLine("8");
+                    writer.WriteLine("-11");
+                    writer.WriteLine("-3");
+                    writer.WriteLine("");
+                    writer.WriteLine("// Инструкция:");
+                    writer.WriteLine("// 1. Замените числа в матрице A и векторе B своими значениями");
+                    writer.WriteLine("// 2. Сохраните файл");
+                    writer.WriteLine("// 3. Импортируйте через меню 'Файл → Импорт данных'");
+                }
+
+                ShowStatus($"Шаблон CSV создан: {Path.GetFileName(filePath)}", false);
+
+                var result = MessageBox.Show(
+                    "Шаблон CSV файла создан. Хотите открыть его для редактирования?",
+                    "Шаблон создан",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = filePath,
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при создании шаблона CSV: {ex.Message}", true);
             }
         }
 
@@ -1294,425 +2208,15 @@ namespace WpfApp1
             }
         }
 
-        private async void GaussMethod_Click(object sender, RoutedEventArgs e)
-        {
-            if (!ValidateInputs()) return;
-
-            ShowStatus("Вычисление методом Гаусса...", false);
-            var stopwatch = Stopwatch.StartNew();
-
-            try
-            {
-                var A = GetMatrixA();
-                var B = GetVectorB();
-
-                var result = await Task.Run(() => SolveByGauss(A, B));
-                stopwatch.Stop();
-
-                DisplaySolution(result, stopwatch.Elapsed);
-                ShowStatus("Решение найдено методом Гаусса", false);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-                ShowStatus($"Ошибка: {ex.Message}", true);
-            }
-        }
-
-        private async void JordanGaussMethod_Click(object sender, RoutedEventArgs e)
-        {
-            if (!ValidateInputs()) return;
-
-            ShowStatus("Вычисление методом Жордана-Гаусса...", false);
-            var stopwatch = Stopwatch.StartNew();
-
-            try
-            {
-                var A = GetMatrixA();
-                var B = GetVectorB();
-
-                var result = await Task.Run(() => SolveByJordanGauss(A, B));
-                stopwatch.Stop();
-
-                DisplaySolution(result, stopwatch.Elapsed);
-                ShowStatus("Решение найдено методом Жордана-Гаусса", false);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-                ShowStatus($"Ошибка: {ex.Message}", true);
-            }
-        }
-
-        private async void CramerMethod_Click(object sender, RoutedEventArgs e)
-        {
-            if (!ValidateInputs()) return;
-
-            if (matrixSize > 10)
-            {
-                var result = MessageBox.Show(
-                    $"Метод Крамера очень медленный для матриц размером {matrixSize}x{matrixSize}. " +
-                    "Выполнение может занять длительное время.\n\n" +
-                    "Продолжить?",
-                    "Предупреждение",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result != MessageBoxResult.Yes)
-                    return;
-            }
-
-            ShowStatus("Вычисление методом Крамера...", false);
-            var stopwatch = Stopwatch.StartNew();
-
-            try
-            {
-                var A = GetMatrixA();
-                var B = GetVectorB();
-
-                var result = await Task.Run(() => SolveByCramer(A, B));
-                stopwatch.Stop();
-
-                DisplaySolution(result, stopwatch.Elapsed);
-                ShowStatus("Решение найдено методом Крамера", false);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-                ShowStatus($"Ошибка: {ex.Message}", true);
-            }
-        }
-
-        private double[] SolveByGauss(double[,] A, double[] B)
-        {
-            int n = B.Length;
-            double[] x = new double[n];
-            double[,] matrix = new double[n, n + 1];
-
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    matrix[i, j] = A[i, j];
-                }
-                matrix[i, n] = B[i];
-            }
-
-            for (int k = 0; k < n; k++)
-            {
-                int maxRow = k;
-                double maxVal = Math.Abs(matrix[k, k]);
-                for (int i = k + 1; i < n; i++)
-                {
-                    if (Math.Abs(matrix[i, k]) > maxVal)
-                    {
-                        maxVal = Math.Abs(matrix[i, k]);
-                        maxRow = i;
-                    }
-                }
-
-                if (maxRow != k)
-                {
-                    for (int j = k; j < n + 1; j++)
-                    {
-                        (matrix[k, j], matrix[maxRow, j]) = (matrix[maxRow, j], matrix[k, j]);
-                    }
-                }
-
-                for (int i = k + 1; i < n; i++)
-                {
-                    double factor = matrix[i, k] / matrix[k, k];
-                    for (int j = k; j < n + 1; j++)
-                    {
-                        matrix[i, j] -= factor * matrix[k, j];
-                    }
-                }
-            }
-
-            for (int i = n - 1; i >= 0; i--)
-            {
-                x[i] = matrix[i, n];
-                for (int j = i + 1; j < n; j++)
-                {
-                    x[i] -= matrix[i, j] * x[j];
-                }
-                x[i] /= matrix[i, i];
-            }
-
-            return x;
-        }
-
-        private double[] SolveByJordanGauss(double[,] A, double[] B)
-        {
-            int n = B.Length;
-            double[,] matrix = new double[n, n + 1];
-
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    matrix[i, j] = A[i, j];
-                }
-                matrix[i, n] = B[i];
-            }
-
-            for (int k = 0; k < n; k++)
-            {
-                double divisor = matrix[k, k];
-                for (int j = k; j < n + 1; j++)
-                {
-                    matrix[k, j] /= divisor;
-                }
-
-                for (int i = 0; i < n; i++)
-                {
-                    if (i != k)
-                    {
-                        double factor = matrix[i, k];
-                        for (int j = k; j < n + 1; j++)
-                        {
-                            matrix[i, j] -= factor * matrix[k, j];
-                        }
-                    }
-                }
-            }
-
-            double[] x = new double[n];
-            for (int i = 0; i < n; i++)
-            {
-                x[i] = matrix[i, n];
-            }
-
-            return x;
-        }
-
-        private double[] SolveByCramer(double[,] A, double[] B)
-        {
-            int n = B.Length;
-
-            double[] x = new double[n];
-            double mainDet = Determinant(A);
-
-            if (Math.Abs(mainDet) < 1e-12)
-                throw new Exception("Определитель матрицы A равен нулю. Метод Крамера не применим.");
-
-            for (int i = 0; i < n; i++)
-            {
-                double[,] tempMatrix = (double[,])A.Clone();
-                for (int j = 0; j < n; j++)
-                {
-                    tempMatrix[j, i] = B[j];
-                }
-                x[i] = Determinant(tempMatrix) / mainDet;
-            }
-
-            return x;
-        }
-
-        private double Determinant(double[,] matrix)
-        {
-            int n = (int)Math.Sqrt(matrix.Length);
-            if (n == 1) return matrix[0, 0];
-            if (n == 2) return matrix[0, 0] * matrix[1, 1] - matrix[0, 1] * matrix[1, 0];
-
-            double det = 0;
-            for (int j = 0; j < n; j++)
-            {
-                det += (j % 2 == 0 ? 1 : -1) * matrix[0, j] * Determinant(GetMinor(matrix, 0, j));
-            }
-            return det;
-        }
-
-        private double[,] GetMinor(double[,] matrix, int row, int col)
-        {
-            int n = (int)Math.Sqrt(matrix.Length);
-            double[,] minor = new double[n - 1, n - 1];
-
-            for (int i = 0, mi = 0; i < n; i++)
-            {
-                if (i == row) continue;
-                for (int j = 0, mj = 0; j < n; j++)
-                {
-                    if (j == col) continue;
-                    minor[mi, mj] = matrix[i, j];
-                    mj++;
-                }
-                mi++;
-            }
-            return minor;
-        }
-
-        private void DisplaySolution(double[] solution, TimeSpan time)
-        {
-            if (VectorXDataGrid == null) return;
-
-            solutionData.Clear();
-
-            if (solution.Length > 20)
-            {
-                VectorXDataGrid.Height = 300;
-            }
-            else if (solution.Length > 10)
-            {
-                VectorXDataGrid.Height = 200;
-            }
-            else
-            {
-                VectorXDataGrid.Height = 120;
-            }
-
-            for (int i = 0; i < solution.Length; i++)
-            {
-                solutionData.Add(new SolutionItem($"x{i + 1}", Math.Round(solution[i], 6)));
-            }
-
-            if (ExecutionTimeTextBox != null)
-                ExecutionTimeTextBox.Text = $"{time.TotalMilliseconds:F4} мс";
-        }
-
-        private void ShowStatus(string message, bool isError)
-        {
-            if (StatusBorder == null || StatusTextBlock == null) return;
-
-            Dispatcher.Invoke(() =>
-            {
-                StatusBorder.Visibility = Visibility.Visible;
-                StatusTextBlock.Text = message;
-                StatusBorder.Background = isError ?
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 230, 230)) :
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 230));
-                StatusBorder.BorderBrush = isError ?
-                    System.Windows.Media.Brushes.Red :
-                    System.Windows.Media.Brushes.Green;
-            });
-        }
-
-        private void GenerateData_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var random = new Random();
-
-                for (int i = 0; i < matrixAData.Count; i++)
-                {
-                    var row = matrixAData[i];
-                    for (int j = 0; j < row.Count; j++)
-                    {
-                        row[j] = Math.Round(random.NextDouble() * 20 - 10, 2);
-                    }
-                }
-                MatrixADataGrid.Items.Refresh();
-
-                for (int i = 0; i < vectorBData.Count; i++)
-                {
-                    vectorBData[i].Value = Math.Round(random.NextDouble() * 20 - 10, 2);
-                }
-                VectorBDataGrid.Items.Refresh();
-
-                ShowStatus("Данные сгенерированы случайным образом", false);
-            }
-            catch (Exception ex)
-            {
-                ShowStatus($"Ошибка при генерации данных: {ex.Message}", true);
-            }
-        }
-
-        private void ClearData_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                for (int i = 0; i < matrixAData.Count; i++)
-                {
-                    var row = matrixAData[i];
-                    for (int j = 0; j < row.Count; j++)
-                    {
-                        row[j] = 0;
-                    }
-                }
-                MatrixADataGrid.Items.Refresh();
-
-                for (int i = 0; i < vectorBData.Count; i++)
-                {
-                    vectorBData[i].Value = 0;
-                }
-                VectorBDataGrid.Items.Refresh();
-
-                solutionData.Clear();
-                ExecutionTimeTextBox.Text = "";
-                StatusBorder.Visibility = Visibility.Collapsed;
-
-                ShowStatus("Данные очищены", false);
-            }
-            catch (Exception ex)
-            {
-                ShowStatus($"Ошибка при очистке данных: {ex.Message}", true);
-            }
-        }
-
-        private void ExportToExcel_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                SaveFileDialog saveFileDialog = new SaveFileDialog
-                {
-                    Filter = "CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt",
-                    Title = "Экспорт данных"
-                };
-
-                if (saveFileDialog.ShowDialog() == true)
-                {
-                    using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
-                    {
-                        var invariantCulture = CultureInfo.InvariantCulture;
-
-                        writer.WriteLine("Матрица A");
-                        for (int i = 0; i < matrixAData.Count; i++)
-                        {
-                            var row = matrixAData[i];
-                            var formattedRow = row.Select(val => val.ToString("0.######", invariantCulture));
-                            writer.WriteLine(string.Join(",", formattedRow));
-                        }
-
-                        writer.WriteLine();
-
-                        writer.WriteLine("Вектор B");
-                        for (int i = 0; i < vectorBData.Count; i++)
-                        {
-                            var item = vectorBData[i];
-                            writer.WriteLine(item.Value.ToString("0.######", invariantCulture));
-                        }
-
-                        writer.WriteLine();
-
-                        if (solutionData.Count > 0)
-                        {
-                            writer.WriteLine("Вектор X");
-                            foreach (var item in solutionData)
-                            {
-                                string value = item.Value.ToString("0.######", invariantCulture);
-                                writer.WriteLine($"{item.Variable},{value}");
-                            }
-                        }
-                    }
-
-                    ShowStatus($"Данные экспортированы в {saveFileDialog.FileName}", false);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowStatus($"Ошибка при экспорте: {ex.Message}", true);
-            }
-        }
-
         private void HelpImport_Click(object sender, RoutedEventArgs e)
         {
             string helpText = @"ИНСТРУКЦИЯ ПО ИМПОРТУ ДАННЫХ
 
-1. ФОРМАТ CSV ФАЙЛА:
-   - Матрица A и вектор B должны быть разделены пустой строкой
+1. ФОРМАТ XLSX ФАЙЛА:
+   - Поддерживается Excel (.xlsx)
+   - Матрица A и вектор B могут быть на одном листе
    - Можно использовать заголовки 'Матрица A' и 'Вектор B'
-   - Разделитель - запятая (,)
-   - Десятичный разделитель - точка (.)
+   - Данные читаются из первого листа
 
 2. ФОРМАТ GOOGLE ТАБЛИЦ:
    - Матрица A: первые N столбцов, N строк
@@ -1722,58 +2226,27 @@ namespace WpfApp1
      * Отдельные секции с метками
      * Только матрица
 
-3. ПРИМЕР ФАЙЛА:
-   Матрица A
-   1,2,3
-   4,5,6
-   7,8,9
+3. ГЕНЕРАЦИЯ ДАННЫХ:
+   - Укажите диапазон (ОТ и ДО)
+   - Нажмите 'Сгенерировать данные'
+   - Интервал сохраняется между запусками
 
-   Вектор B
-   10
-   11
-   12
+4. ВЫБОР МЕТОДОВ:
+   - Можно выбрать несколько методов одновременно
+   - Нажмите 'Выполнить все выбранные'
+   - Программа покажет самый быстрый метод
 
-4. ИМПОРТ ИЗ GOOGLE ТАБЛИЦ:
-   - Таблица должна быть публично доступной
-   - Используйте меню 'Файл → Импорт данных → Из Google Tables'
-   - Вставьте ссылку на таблицу
-
-5. СОЗДАНИЕ ШАБЛОНА:
-   - Используйте меню 'Файл → Импорт данных → Создать шаблон CSV'
-   - Отредактируйте созданный файл
-   - Импортируйте через меню 'Файл → Импорт данных'";
+5. ЭКСПОРТ РЕЗУЛЬТАТОВ:
+   - Поддерживается Excel (.xlsx) и CSV
+   - Сохраняются матрица A, вектор B и решение";
 
             MessageBox.Show(helpText, "Инструкция по импорту", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void About_Click(object sender, RoutedEventArgs e)
-        {
-            string aboutText = @"ПРОГРАММА ДЛЯ РЕШЕНИЯ СЛАУ
-
-Версия: 1.0
-Разработчик: Студент КемГУ
-
-ФУНКЦИОНАЛЬНОСТЬ:
-- Решение систем линейных алгебраических уравнений
-- Три метода решения: Гаусса, Жордана-Гаусса, Крамера
-- Импорт данных из CSV файлов и Google Таблиц
-- Экспорт результатов
-- Генерация случайных данных
-
-ТРЕБОВАНИЯ К СИСТЕМЕ:
-- .NET Framework 4.7.2 или выше
-- 100 МБ свободного места на диске
-- Интернет-соединение для импорта из Google Таблиц
-
-Лабораторная работа №6
-Кемеровский государственный университет
-2024 год";
-
-            MessageBox.Show(aboutText, "О программе", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
 
         private void Exit_Click(object sender, RoutedEventArgs e)
         {
+            SaveGenerationIntervals();
             this.Close();
         }
     }
