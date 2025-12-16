@@ -1,0 +1,90 @@
+﻿<Window x:Class="WpfApp1.GoogleSheetsDialogLeast"
+	   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	   Title="Загрузка из Google Sheets"
+	   Height="300"
+	   Width="500"
+	   WindowStartupLocation="CenterOwner"
+	   ResizeMode="NoResize"
+	   WindowStyle="SingleBorderWindow">
+
+	<Window.Resources>
+		<Style x:Key="ModernButton" TargetType="Button">
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Height" Value="32"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Margin" Value="5,0,0,0"/>
+		</Style>
+	</Window.Resources>
+
+	<Grid Margin="15">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+
+		<!-- Заголовок -->
+		<TextBlock Grid.Row="0"
+                   Text="Введите ссылку на Google Sheets таблицу:"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,10"/>
+
+		<!-- Поле для ввода ссылки -->
+		<TextBox x:Name="txtUrl"
+                 Grid.Row="1"
+                 VerticalScrollBarVisibility="Auto"
+                 AcceptsReturn="False"
+                 FontFamily="Segoe UI"
+                 FontSize="12"
+                 Height="80"
+                 TextWrapping="Wrap"/>
+
+		<!-- Инструкция -->
+		<TextBlock Grid.Row="2"
+                   Text="Примеры ссылок:"
+                   FontWeight="SemiBold"
+                   Margin="0,15,0,5"/>
+
+		<!-- Примеры ссылок с переносами строк -->
+		<StackPanel Grid.Row="3"
+                    Margin="0,0,0,15">
+			<TextBlock FontSize="11"
+                       Foreground="#666"
+                       TextWrapping="Wrap">
+				• https://docs.google.com/spreadsheets/d/ABC123xyz/edit
+			</TextBlock>
+			<TextBlock FontSize="11"
+                       Foreground="#666"
+                       TextWrapping="Wrap"
+                       Margin="0,2,0,0">
+				• https://docs.google.com/spreadsheets/d/ABC123xyz
+			</TextBlock>
+			<TextBlock FontSize="11"
+                       Foreground="#666"
+                       TextWrapping="Wrap"
+                       Margin="0,2,0,0">
+				• https://docs.google.com/spreadsheets/d/ABC123xyz/edit?usp=sharing
+			</TextBlock>
+		</StackPanel>
+
+		<!-- Кнопки -->
+		<StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,15,0,0">
+			<Button Content="Отмена"
+                    Click="Cancel_Click"
+                    Width="80"
+                    Height="32"/>
+			<Button Content="Загрузить"
+                    Click="Load_Click"
+                    Style="{StaticResource ModernButton}"
+                    Width="80"/>
+		</StackPanel>
+	</Grid>
+</Window>

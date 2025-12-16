@@ -35,13 +35,13 @@ namespace WpfApp1
             objBisectionMethod.Show();
         }
 
-       // private void Button_ClickLeast(object sender, RoutedEventArgs e)
-       // {
-       //     LeastSquaresWindow objLeastSquares = new LeastSquaresWindow();
-       //     objLeastSquares.Closed += Window_Closed;
-       //     this.Hide();
-       //     objLeastSquares.Show();
-       // }
+        private void Button_ClickLeast(object sender, RoutedEventArgs e)
+        {
+            LeastSquaresWindow objLeastSquares = new LeastSquaresWindow();
+            objLeastSquares.Closed += Window_Closed;
+            this.Hide();
+            objLeastSquares.Show();
+        }
 
         private void Button_ClickGolden(object sender, RoutedEventArgs e)
         {

@@ -1,0 +1,306 @@
+﻿<Window x:Class="WpfApp1.LeastSquaresWindow"
+	   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	   xmlns:oxy="http://oxyplot.org/wpf"
+	   mc:Ignorable="d"
+	   Title="Метод Наименьших Квадратов"
+	   Height="850" Width="1600"
+	   WindowStartupLocation="CenterScreen"
+	   FontFamily="Segoe UI"
+	   Closing="Window_Closing">
+
+	<Window.Resources>
+		<Style x:Key="SectionTitle" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="16"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Foreground" Value="#2C5F9E"/>
+			<Setter Property="Margin" Value="0,0,0,10"/>
+		</Style>
+
+		<Style x:Key="DataGridStyle" TargetType="DataGrid">
+			<Setter Property="Margin" Value="5"/>
+			<Setter Property="AutoGenerateColumns" Value="False"/>
+			<Setter Property="CanUserAddRows" Value="True"/>
+			<Setter Property="CanUserDeleteRows" Value="False"/>
+			<Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+			<Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+		</Style>
+
+		<Style x:Key="ButtonStyle" TargetType="Button">
+			<Setter Property="Margin" Value="5"/>
+			<Setter Property="Padding" Value="10,5"/>
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Height" Value="32"/>
+		</Style>
+
+		<Style x:Key="CheckBoxStyle" TargetType="CheckBox">
+			<Setter Property="Foreground" Value="#333"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="Margin" Value="5,3"/>
+		</Style>
+
+		<Style x:Key="TextBoxStyle" TargetType="TextBox">
+			<Setter Property="Height" Value="28"/>
+			<Setter Property="Padding" Value="5"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#E1E8F2"/>
+			<Setter Property="Background" Value="White"/>
+			<Setter Property="FontSize" Value="13"/>
+		</Style>
+	</Window.Resources>
+
+	<Window.Background>
+		<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+			<GradientStop Color="#f0f5fc" Offset="0.0" />
+			<GradientStop Color="#e8eff8" Offset="0.4" />
+			<GradientStop Color="#dde6f2" Offset="1.0" />
+		</LinearGradientBrush>
+	</Window.Background>
+
+	<Grid>
+		<Ellipse Width="250" Height="250" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-80,-80"/>
+		<Ellipse Width="180" Height="180" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-60,-60"/>
+
+		<DockPanel Margin="15">
+			<!-- Меню -->
+			<Menu DockPanel.Dock="Top" Background="Transparent" Height="30">
+				<MenuItem Header="Файл">
+					<MenuItem Header="Импорт данных">
+						<MenuItem Header="Из Excel (XLSX)" Click="ImportFromExcel_Click"/>
+						<MenuItem Header="Из Google Таблиц" Click="ImportFromGoogleTables_Click"/>
+						<Separator/>
+						<MenuItem Header="Создать шаблон" Click="CreateTemplate_Click"/>
+					</MenuItem>
+					<MenuItem Header="Сгенерировать данные" Click="GenerateData_Click"/>
+					<Separator/>
+					<MenuItem Header="Экспорт в Excel (XLSX)" Click="ExportToExcel_Click"/>
+					<Separator/>
+					<MenuItem Header="Очистить всё" Click="ClearData_Click"/>
+					<Separator/>
+					<MenuItem Header="Выход" Click="Exit_Click"/>
+				</MenuItem>
+				<MenuItem Header="Вычисления">
+					<MenuItem Header="Выполнить все выбранные" Click="CalculateAllSelected_Click"/>
+					<Separator/>
+					<MenuItem Header="Выбрать все методы" Click="SelectAllMethods_Click"/>
+					<MenuItem Header="Сбросить все методы" Click="DeselectAllMethods_Click"/>
+					<Separator/>
+					<MenuItem Header="Линейная аппроксимация (n=1)" Click="LinearApproximation_Click"/>
+					<MenuItem Header="Квадратичная аппроксимация (n=2)" Click="QuadraticApproximation_Click"/>
+				</MenuItem>
+				<MenuItem Header="Вид">
+					<MenuItem Header="Показать графики" Click="ShowGraphs_Click"/>
+					<MenuItem Header="Скрыть графики" Click="HideGraphs_Click"/>
+				</MenuItem>
+				<MenuItem Header="Настройки">
+					<MenuItem Header="Сохранить интервалы генерации" Click="SaveGenerationIntervals_Click"/>
+				</MenuItem>
+				<MenuItem Header="Помощь">
+					<MenuItem Header="Инструкции по импорту" Click="HelpImport_Click"/>
+				</MenuItem>
+			</Menu>
+
+			<!-- Основное содержимое -->
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition Height="*"/>
+				</Grid.RowDefinitions>
+
+				<!-- Заголовок -->
+				<StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,10,0,20">
+					<TextBlock Text="МЕТОД НАИМЕНЬШИХ КВАДРАТОВ"
+                              FontSize="28"
+                              FontWeight="Light"
+                              Foreground="#2C5F9E"/>
+					<TextBlock Text="Аппроксимация данных полиномами степени n=1 и n=2"
+                              FontSize="14"
+                              Foreground="#666"
+                              Margin="0,5,0,0"/>
+				</StackPanel>
+
+				<!-- Область содержимого -->
+				<Grid Grid.Row="1" Margin="10">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="300"/>
+						<ColumnDefinition Width="10"/>
+						<ColumnDefinition Width="*"/>
+						<ColumnDefinition Width="10"/>
+						<ColumnDefinition Width="350"/>
+					</Grid.ColumnDefinitions>
+
+					<!-- Левая панель - Управление -->
+					<StackPanel Grid.Column="0">
+						<!-- Выбор методов -->
+						<GroupBox Header="ВЫБОР МЕТОДОВ" Margin="0,0,0,10" Padding="10" BorderBrush="#E1E8F2" BorderThickness="1" Background="#FAFBFD">
+							<StackPanel>
+								<CheckBox x:Name="chkLinear" Content="Линейная (n=1)" Style="{StaticResource CheckBoxStyle}" IsChecked="True"/>
+								<CheckBox x:Name="chkQuadratic" Content="Квадратичная (n=2)" Style="{StaticResource CheckBoxStyle}" IsChecked="True"/>
+
+								<StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+									<Button Content="Все" Click="SelectAllMethods_Click"
+                                            Background="#2C5F9E" Foreground="White"
+                                            BorderThickness="0" Padding="8,3" Margin="0,0,5,0"
+                                            Cursor="Hand" FontSize="12"/>
+									<Button Content="Ничего" Click="DeselectAllMethods_Click"
+                                            Background="#777" Foreground="White"
+                                            BorderThickness="0" Padding="8,3"
+                                            Cursor="Hand" FontSize="12"/>
+								</StackPanel>
+
+								<Button Content="ВЫПОЛНИТЬ РАСЧЁТ"
+                                        Click="CalculateAllSelected_Click"
+                                        Style="{StaticResource ButtonStyle}"
+                                        Background="#27AE60"
+                                        Margin="0,15,0,0"/>
+							</StackPanel>
+						</GroupBox>
+
+						<!-- Генерация данных -->
+						<GroupBox Header="ГЕНЕРАЦИЯ ДАННЫХ" Margin="0,0,0,10" Padding="10" BorderBrush="#E1E8F2" BorderThickness="1" Background="#FAFBFD">
+							<StackPanel>
+								<TextBlock Text="Количество точек:" Foreground="#333" Margin="0,0,0,5"/>
+								<TextBox x:Name="txtPointCount" Text="10" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,10"/>
+
+								<TextBlock Text="Диапазон X:" Foreground="#333" Margin="0,0,0,5"/>
+								<Grid Margin="0,0,0,5">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="10"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+									<TextBox x:Name="txtMinX" Text="-10" Style="{StaticResource TextBoxStyle}"/>
+									<TextBox x:Name="txtMaxX" Text="10" Style="{StaticResource TextBoxStyle}" Grid.Column="2"/>
+								</Grid>
+
+								<TextBlock Text="Диапазон Y:" Foreground="#333" Margin="0,0,0,5"/>
+								<Grid Margin="0,0,0,10">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="10"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+									<TextBox x:Name="txtMinY" Text="-50" Style="{StaticResource TextBoxStyle}"/>
+									<TextBox x:Name="txtMaxY" Text="50" Style="{StaticResource TextBoxStyle}" Grid.Column="2"/>
+								</Grid>
+
+								<Button Content="Сгенерировать данные"
+                                        Click="GenerateData_Click"
+                                        Style="{StaticResource ButtonStyle}"/>
+							</StackPanel>
+						</GroupBox>
+
+						<!-- История точек -->
+						<GroupBox Header="ИСТОРИЯ ТОЧЕК" Margin="0,0,0,10" Padding="10" BorderBrush="#E1E8F2" BorderThickness="1" Background="#FAFBFD" Height="200">
+							<DataGrid x:Name="HistoryDataGrid"
+                                     Style="{StaticResource DataGridStyle}"
+                                     Height="150"
+                                     IsReadOnly="True"/>
+						</GroupBox>
+
+						<!-- Управление точками -->
+						<GroupBox Header="УПРАВЛЕНИЕ ТОЧКАМИ" Margin="0,0,0,10" Padding="10" BorderBrush="#E1E8F2" BorderThickness="1" Background="#FAFBFD">
+							<StackPanel>
+								<Button Content="Добавить точку"
+                                        Click="AddPoint_Click"
+                                        Style="{StaticResource ButtonStyle}"
+                                        Margin="0,0,0,5"/>
+
+								<Button Content="Удалить выбранную"
+                                        Click="RemoveSelectedPoint_Click"
+                                        Style="{StaticResource ButtonStyle}"
+                                        Background="#E74C3C"
+                                        Margin="0,0,0,5"/>
+
+								<Button Content="Удалить последнюю"
+                                        Click="RemoveLastPoint_Click"
+                                        Style="{StaticResource ButtonStyle}"
+                                        Background="#E67E22"/>
+
+								<TextBlock Text="Также можно удалять точки клавишей Delete"
+                                          Foreground="#666"
+                                          FontSize="11"
+                                          Margin="0,10,0,0"
+                                          HorizontalAlignment="Center"/>
+							</StackPanel>
+						</GroupBox>
+					</StackPanel>
+
+					<!-- Центральная панель - Данные и график -->
+					<Grid Grid.Column="2">
+						<Grid.RowDefinitions>
+							<RowDefinition Height="*"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+
+						<!-- Входные данные -->
+						<GroupBox Header="ТЕКУЩИЕ ТОЧКИ (редактируемые)" Grid.Row="0" Margin="0,0,0,10">
+							<DataGrid x:Name="PointsDataGrid"
+                                     Style="{StaticResource DataGridStyle}"
+                                     Height="350"
+                                     AutoGeneratingColumn="PointsDataGrid_AutoGeneratingColumn"/>
+						</GroupBox>
+
+						<!-- График OxyPlot -->
+						<GroupBox Header="ГРАФИК АППРОКСИМАЦИИ" Grid.Row="1">
+							<oxy:PlotView x:Name="PlotView" Height="300" Background="White"/>
+						</GroupBox>
+					</Grid>
+
+					<!-- Правая панель - Результаты -->
+					<StackPanel Grid.Column="4" Margin="10,0,0,0">
+						<!-- Результаты линейной аппроксимации -->
+						<GroupBox Header="ЛИНЕЙНАЯ АППРОКСИМАЦИЯ (n=1)" Margin="0,0,0,10">
+							<TextBox x:Name="txtLinearResults"
+                                    IsReadOnly="True"
+                                    Height="180"
+                                    Margin="5"
+                                    Background="#F5F5F5"
+                                    VerticalScrollBarVisibility="Auto"
+                                    TextWrapping="Wrap"
+                                    FontFamily="Consolas"
+                                    FontSize="12"/>
+						</GroupBox>
+
+						<!-- Результаты квадратичной аппроксимации -->
+						<GroupBox Header="КВАДРАТИЧНАЯ АППРОКСИМАЦИЯ (n=2)" Margin="0,0,0,10">
+							<TextBox x:Name="txtQuadraticResults"
+                                    IsReadOnly="True"
+                                    Height="180"
+                                    Margin="5"
+                                    Background="#F5F5F5"
+                                    VerticalScrollBarVisibility="Auto"
+                                    TextWrapping="Wrap"
+                                    FontFamily="Consolas"
+                                    FontSize="12"/>
+						</GroupBox>
+
+						<!-- Сравнение -->
+						<GroupBox Header="СРАВНЕНИЕ МЕТОДОВ" Margin="0,0,0,10">
+							<TextBox x:Name="txtComparison"
+                                    IsReadOnly="True"
+                                    Height="120"
+                                    Margin="5"
+                                    Background="#F5F5F5"
+                                    VerticalScrollBarVisibility="Auto"
+                                    TextWrapping="Wrap"
+                                    FontFamily="Consolas"
+                                    FontSize="11"/>
+						</GroupBox>
+
+						<!-- Статус -->
+						<Border BorderBrush="#FFCC00" BorderThickness="1" Background="#FFFEF0" Margin="5" Padding="10" Visibility="Collapsed" x:Name="StatusBorder">
+							<TextBlock x:Name="StatusTextBlock" TextWrapping="Wrap"/>
+						</Border>
+					</StackPanel>
+				</Grid>
+			</Grid>
+		</DockPanel>
+	</Grid>
+</Window>

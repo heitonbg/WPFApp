@@ -135,7 +135,7 @@
 
                     <Button Content="Метод наименьших квадратов" 
                             Style="{StaticResource ModernButton}"
-                            IsEnabled="False" 
+                            Click="Button_ClickLeast" 
                             Margin="0,0,0,12"/>
 
                     <Button Content="Олимпиадные сортировки" 
