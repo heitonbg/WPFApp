@@ -104,13 +104,11 @@ namespace WpfApp1
 
         private IntegrationResult FindOptimalNForMethod(double a, double b, double epsilon, int startN, IntegrationMethod method)
         {
-            // Раздельная логика для Симпсона
             if (method == IntegrationMethod.Simpson)
             {
                 return FindOptimalNForSimpson(a, b, epsilon, startN);
             }
 
-            // Оригинальная логика для остальных методов
             return FindOptimalNForOtherMethods(a, b, epsilon, startN, method);
         }
 
@@ -159,7 +157,6 @@ namespace WpfApp1
 
                 previousValue = currentValue;
 
-                // Увеличиваем N для следующих методов
                 if (method == IntegrationMethod.RectangleLeft || method == IntegrationMethod.RectangleRight)
                 {
                     n = (int)(n * 1.5);
@@ -169,14 +166,12 @@ namespace WpfApp1
                     n = (int)(n * 1.2);
                 }
 
-                // Ограничение максимального N
                 if (n > 1000000)
                 {
                     break;
                 }
             }
 
-            // Если точность не достигнута за maxIterations, используем последнее значение
             if (!precisionAchieved && result.History.Count > 0)
             {
                 currentValue = result.History.Last();
@@ -208,11 +203,10 @@ namespace WpfApp1
                 HistoryN = new List<int>()
             };
 
-            // Начинаем с минимального четного N
             int n = Math.Max(2, startN);
             if (n % 2 != 0) n++;
 
-            int maxIterations = 30; // Меньше итераций для Симпсона
+            int maxIterations = 30; 
             double currentValue = 0;
             double previousValue = 0;
             bool precisionAchieved = false;
@@ -232,18 +226,15 @@ namespace WpfApp1
                 result.History.Add(currentValue);
                 result.HistoryN.Add(n);
 
-                // Для Симпсона используем более строгие критерии
                 if (iteration > 0)
                 {
                     double change = Math.Abs(currentValue - previousValue);
 
-                    // Симпсон сходится быстрее, поэтому требуем меньшую ошибку
                     if (change <= epsilon * 0.1)
                     {
                         precisionAchieved = true;
                         result.ErrorEstimate = change;
 
-                        // Дополнительная проверка: делаем еще один шаг для уверенности
                         if (iteration < maxIterations - 1)
                         {
                             int nextN = n + 2;
@@ -251,7 +242,7 @@ namespace WpfApp1
                             {
                                 double nextValue = CalculateWithExactN(a, b, nextN, IntegrationMethod.Simpson);
                                 double nextChange = Math.Abs(nextValue - currentValue);
-                                if (nextChange <= epsilon * 0.01) // Еще более строгая проверка
+                                if (nextChange <= epsilon * 0.01) 
                                 {
                                     break;
                                 }
@@ -271,23 +262,19 @@ namespace WpfApp1
 
                 previousValue = currentValue;
 
-                // Для Симпсона увеличиваем N более агрессивно
                 if (n < 10) n += 2;
                 else if (n < 100) n = (int)(n * 1.5);
                 else if (n < 1000) n = (int)(n * 1.3);
                 else n = (int)(n * 1.2);
 
-                // Обеспечиваем четность
                 if (n % 2 != 0) n++;
 
-                // Ограничение максимального N
-                if (n > 50000) // Меньший предел для Симпсона
+                if (n > 50000) 
                 {
                     break;
                 }
             }
 
-            // Если точность не достигнута за maxIterations, используем последнее значение
             if (!precisionAchieved && result.History.Count > 0)
             {
                 currentValue = result.History.Last();

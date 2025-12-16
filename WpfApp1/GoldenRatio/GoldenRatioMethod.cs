@@ -14,17 +14,14 @@ namespace WpfApp1
 
         public GoldenRatioMethod(string function)
         {
-            // Упрощенный парсинг функций
             string processedFunction = ProcessFunctionForNCalc(function);
             Console.WriteLine($"Преобразованная функция: {processedFunction}");
 
             _expression = new Expression(processedFunction, EvaluateOptions.IgnoreCase);
 
-            // Добавляем математические константы
             _expression.Parameters["pi"] = Math.PI;
             _expression.Parameters["e"] = Math.E;
 
-            // Подписываемся на события вычисления
             _expression.EvaluateFunction += EvaluateFunction;
             _expression.EvaluateParameter += EvaluateParameter;
         }
@@ -38,19 +35,14 @@ namespace WpfApp1
 
             Console.WriteLine($"Исходная функция: {result}");
 
-            // 1. Заменяем запятые на точки
             result = result.Replace(",", ".");
 
-            // 2. Упрощенная обработка e^x -> exp(x)
             result = SimpleExponentialConversion(result);
 
-            // 3. Простое добавление умножения
             result = SimpleMultiplication(result);
 
-            // 4. Заменяем ^ на pow (простой вариант)
             result = SimplePowerConversion(result);
 
-            // 5. Убираем пробелы
             result = result.Replace(" ", "");
 
             Console.WriteLine($"После обработки: {result}");
@@ -62,26 +54,20 @@ namespace WpfApp1
         {
             string result = expression;
 
-            // Самый простой способ: заменяем e^( на exp(
-            // Сначала для случаев с скобками
             result = result.Replace("e^(", "exp(");
             result = result.Replace("e ^ (", "exp(");
             result = result.Replace("e ^(", "exp(");
             result = result.Replace("e^ (", "exp(");
 
-            // Затем попробуем найти паттерн e^(-x/3) и подобные
             int eIndex = result.IndexOf("e^", StringComparison.OrdinalIgnoreCase);
             while (eIndex >= 0)
             {
-                // Нашли e^
                 int start = eIndex + 2;
                 if (start < result.Length)
                 {
-                    // Ищем конец выражения
                     int end = start;
                     int bracketCount = 0;
 
-                    // Если следующая скобка - открывающая
                     if (start < result.Length && result[start] == '(')
                     {
                         bracketCount = 1;
@@ -96,7 +82,6 @@ namespace WpfApp1
                     }
                     else
                     {
-                        // Ищем конец простого выражения
                         while (end < result.Length &&
                                (char.IsLetterOrDigit(result[end]) ||
                                 result[end] == '.' || result[end] == '+' ||
@@ -113,7 +98,6 @@ namespace WpfApp1
                     result = result.Remove(eIndex, (end - eIndex)).Insert(eIndex, replacement);
                 }
 
-                // Ищем следующее вхождение
                 eIndex = result.IndexOf("e^", eIndex + 1, StringComparison.OrdinalIgnoreCase);
             }
 
@@ -124,7 +108,6 @@ namespace WpfApp1
         {
             string result = expression;
 
-            // Простые замены умножения
             result = Regex.Replace(result, @"(\d)(\()", "$1*$2");
             result = Regex.Replace(result, @"(\))(\()", "$1*$2");
 
@@ -135,11 +118,9 @@ namespace WpfApp1
         {
             string result = expression;
 
-            // Простой подход: ищем x^y и заменяем на pow(x,y)
             int caretIndex = result.IndexOf('^');
             while (caretIndex >= 0)
             {
-                // Находим начало левого выражения
                 int leftStart = caretIndex - 1;
                 while (leftStart >= 0 &&
                        (char.IsLetterOrDigit(result[leftStart]) ||
@@ -150,7 +131,6 @@ namespace WpfApp1
                 }
                 leftStart++;
 
-                // Находим конец правого выражения
                 int rightEnd = caretIndex + 1;
                 while (rightEnd < result.Length &&
                        (char.IsLetterOrDigit(result[rightEnd]) ||
@@ -165,14 +145,12 @@ namespace WpfApp1
                 string left = result.Substring(leftStart, caretIndex - leftStart);
                 string right = result.Substring(caretIndex + 1, rightEnd - caretIndex - 1);
 
-                // Очищаем от лишних скобок
                 left = left.Trim();
                 right = right.Trim();
 
                 string replacement = $"pow({left},{right})";
                 result = result.Remove(leftStart, rightEnd - leftStart).Insert(leftStart, replacement);
 
-                // Ищем следующую степень
                 caretIndex = result.IndexOf('^');
             }
 
@@ -274,7 +252,6 @@ namespace WpfApp1
         {
             try
             {
-                // Проверка на слишком большие значения
                 if (Math.Abs(x) > 1e10)
                 {
                     return x > 0 ? double.MaxValue / 1000 : double.MinValue / 1000;
@@ -310,8 +287,6 @@ namespace WpfApp1
                 throw new ArgumentException($"Ошибка вычисления функции: {ex.Message}");
             }
         }
-
-        // ============== ОСНОВНЫЕ МЕТОДЫ (остаются без изменений) ==============
 
         public GoldenRatioResult FindMinimum(double a, double b, double epsilon)
         {
@@ -426,7 +401,6 @@ namespace WpfApp1
 
             int decimalPlaces = GetDecimalPlaces(epsilon);
 
-            // Проверяем границы интервала
             if (Math.Abs(fa) < epsilon)
             {
                 return new GoldenRatioResult
@@ -449,7 +423,6 @@ namespace WpfApp1
                 };
             }
 
-            // Проверяем смену знака
             if (fa * fb > 0)
             {
                 throw new ArgumentException($"Функция не меняет знак на интервале [{a}, {b}]. f(a)={fa:F6}, f(b)={fb:F6}");
@@ -457,7 +430,6 @@ namespace WpfApp1
 
             IterationsCount = 0;
 
-            // Используем метод половинного деления
             while (Math.Abs(b - a) > epsilon)
             {
                 IterationsCount++;
@@ -538,8 +510,6 @@ namespace WpfApp1
             return 6;
         }
 
-        // ============== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==============
-
         public List<GoldenRatioResult> FindAllExtremums(double a, double b, double epsilon, bool findMinimum = true)
         {
             List<GoldenRatioResult> results = new List<GoldenRatioResult>();
@@ -560,10 +530,8 @@ namespace WpfApp1
                         FindMinimum(start, end, epsilon) :
                         FindMaximum(start, end, epsilon);
 
-                    // Проверяем, не на границе ли экстремум
                     if (result.ExtremumPoint > start + epsilon && result.ExtremumPoint < end - epsilon)
                     {
-                        // Проверяем на дубликаты
                         bool isDuplicate = false;
                         foreach (var existing in results)
                         {
@@ -614,7 +582,6 @@ namespace WpfApp1
             }
             catch
             {
-                // Если не удалось найти все экстремумы, ищем на всем интервале
             }
 
             return findMinimum ? FindMinimum(a, b, epsilon) : FindMaximum(a, b, epsilon);
@@ -624,7 +591,6 @@ namespace WpfApp1
         {
             try
             {
-                // Проверяем функцию в нескольких точках
                 double[] testPoints = { a, (a + b) / 2, b };
 
                 foreach (double x in testPoints)

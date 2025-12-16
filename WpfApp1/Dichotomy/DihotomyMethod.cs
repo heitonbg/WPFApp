@@ -13,7 +13,6 @@ namespace WpfApp1
 
         public DihotomyMethod(string function)
         {
-            // Преобразуем функцию для NCalc
             string processedFunction = ProcessFunctionForNCalc(function.ToLower());
             _expression = new Expression(processedFunction, EvaluateOptions.IgnoreCase);
 
@@ -26,10 +25,8 @@ namespace WpfApp1
 
         private string ProcessFunctionForNCalc(string function)
         {
-            // Заменяем оператор ^ на вызов функции pow
             string result = function;
 
-            // Преобразуем x^y в pow(x,y)
             result = ConvertPowerOperator(result);
 
             return result;
@@ -37,7 +34,6 @@ namespace WpfApp1
 
         private string ConvertPowerOperator(string expression)
         {
-            // Преобразует x^2 в pow(x,2) с учетом скобок
             string result = expression;
             int maxIterations = 20;
             int iteration = 0;
@@ -52,7 +48,6 @@ namespace WpfApp1
                 string left = match.Groups[1].Value.Trim();
                 string right = match.Groups[2].Value.Trim();
 
-                // Проверяем, нужно ли добавлять скобки
                 if (left.Contains('+') || left.Contains('-') || left.Contains('*') || left.Contains('/'))
                 {
                     left = $"({left})";
@@ -73,7 +68,6 @@ namespace WpfApp1
 
         private void EvaluateParameter(string name, ParameterArgs args)
         {
-            // Дополнительные параметры, если нужны
             switch (name.ToLower())
             {
                 case "pi":
@@ -223,7 +217,6 @@ namespace WpfApp1
                 double fa = CalculateFunction(a);
                 double fb = CalculateFunction(b);
 
-                // Если функция на концах имеет одинаковый знак и не равна нулю
                 return Math.Sign(fa) == Math.Sign(fb) && Math.Abs(fa) > 1e-15 && Math.Abs(fb) > 1e-15;
             }
             catch
@@ -244,7 +237,6 @@ namespace WpfApp1
                 throw new ArgumentException("Точность epsilon должна быть положительной");
             }
 
-            // Проверка на одинаковые знаки на концах интервала
             if (HasSameSignOnEnds(a, b))
             {
                 throw new InvalidOperationException($"Функция имеет одинаковый знак на концах интервала [{a}, {b}]. " +

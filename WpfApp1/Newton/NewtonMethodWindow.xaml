@@ -6,7 +6,7 @@
         xmlns:oxy="http://oxyplot.org/wpf"
         mc:Ignorable="d"
         Title="Метод Ньютона"
-        Height="700" Width="1000"
+        Height="900" Width="1600"
         WindowStartupLocation="CenterScreen"
         Closing="Window_Closing"
         FontFamily="Segoe UI"
@@ -124,7 +124,7 @@
 				<RowDefinition Height="*"/>
 			</Grid.RowDefinitions>
 
-			<!-- Улучшенное меню как в методе дихотомии -->
+			<!-- Улучшенное меню -->
 			<Menu Grid.Row="0" Background="Transparent">
 				<MenuItem Header="Файл" Foreground="#2C5F9E" FontWeight="SemiBold">
 					<MenuItem Header="Найти минимум" Click="Calculate_Click"/>

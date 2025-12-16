@@ -61,10 +61,10 @@ namespace WpfApp1
 
         private void Button_ClickSorting(object sender, RoutedEventArgs e)
         {
-            SortingWindow objSLAE = new SortingWindow();
-            objSLAE.Closed += Window_Closed;
+            SortingWindow objSorting = new SortingWindow();
+            objSorting.Closed += Window_Closed;
             this.Hide();
-            objSLAE.Show();
+            objSorting.Show();
         }
 
         private void Button_ClickNewton(object sender, RoutedEventArgs e)

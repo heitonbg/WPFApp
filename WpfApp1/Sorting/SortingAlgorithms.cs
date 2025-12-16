@@ -36,7 +36,7 @@ namespace WpfApp1
                         array[j + 1] = temp;
                     }
                 }
-                iterations++; // Одна итерация = один полный проход
+                iterations++; 
             }
 
             stopwatch.Stop();
@@ -62,7 +62,7 @@ namespace WpfApp1
                     j--;
                 }
                 array[j + 1] = key;
-                iterations++; // Одна итерация = одна вставка элемента
+                iterations++; 
             }
 
             stopwatch.Stop();
@@ -107,7 +107,7 @@ namespace WpfApp1
                     }
                 }
                 left++;
-                iterations++; // Одна итерация = один проход в обе стороны
+                iterations++; 
             }
 
             stopwatch.Stop();

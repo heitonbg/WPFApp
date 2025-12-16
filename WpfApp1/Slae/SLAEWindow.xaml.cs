@@ -10,15 +10,150 @@ using System.IO;
 using System.Diagnostics;
 using System.Windows.Threading;
 using System.Collections;
+using System.Net.Http;
+using System.Text;
+using System.Globalization;
+using System.Threading;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace WpfApp1
 {
+    // Класс для представления строки матрицы
+    public class MatrixRow : ObservableCollection<double>, INotifyPropertyChanged
+    {
+        private int _rowIndex;
+
+        public int RowIndex
+        {
+            get { return _rowIndex; }
+            set
+            {
+                _rowIndex = value;
+                OnPropertyChanged(nameof(RowIndex));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public MatrixRow(int size) : base()
+        {
+            for (int i = 0; i < size; i++)
+            {
+                this.Add(0.0);
+            }
+        }
+    }
+
+    // Класс для представления вектора B
+    public class VectorBItem : INotifyPropertyChanged
+    {
+        private double _value;
+
+        public int Index { get; set; }
+
+        public double Value
+        {
+            get { return _value; }
+            set
+            {
+                if (_value != value)
+                {
+                    _value = value;
+                    OnPropertyChanged(nameof(Value));
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public VectorBItem(int index, double value = 0)
+        {
+            Index = index;
+            Value = value;
+        }
+    }
+
+    // Класс для представления решения X
+    public class SolutionItem : INotifyPropertyChanged
+    {
+        private string _variable;
+        private double _value;
+
+        public string Variable
+        {
+            get { return _variable; }
+            set
+            {
+                if (_variable != value)
+                {
+                    _variable = value;
+                    OnPropertyChanged(nameof(Variable));
+                }
+            }
+        }
+
+        public double Value
+        {
+            get { return _value; }
+            set
+            {
+                if (_value != value)
+                {
+                    _value = value;
+                    OnPropertyChanged(nameof(Value));
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public SolutionItem(string variable, double value)
+        {
+            Variable = variable;
+            Value = value;
+        }
+    }
+
     public partial class SLAEWindow : Window
     {
         private int matrixSize = 2;
         private const int MAX_MATRIX_SIZE = 50;
-        private List<double[]> matrixAData = new List<double[]>();
-        private List<double[]> vectorBData = new List<double[]>();
+        private ObservableCollection<MatrixRow> matrixAData = new ObservableCollection<MatrixRow>();
+        private ObservableCollection<VectorBItem> vectorBData = new ObservableCollection<VectorBItem>();
+        private ObservableCollection<SolutionItem> solutionData = new ObservableCollection<SolutionItem>();
+        private HttpClient httpClient = new HttpClient();
+
+        // Enum для определения формата данных
+        private enum DataFormatType
+        {
+            Unknown,
+            MatrixOnly,
+            MatrixWithVector,
+            LabeledSections
+        }
+
+        // Класс для хранения результатов анализа данных
+        private class DataAnalysisResult
+        {
+            public DataFormatType DataFormat { get; set; }
+            public int MatrixSize { get; set; }
+        }
 
         public SLAEWindow()
         {
@@ -28,6 +163,11 @@ namespace WpfApp1
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            // Устанавливаем контекст данных для DataGrid
+            MatrixADataGrid.ItemsSource = matrixAData;
+            VectorBDataGrid.ItemsSource = vectorBData;
+            VectorXDataGrid.ItemsSource = solutionData;
+
             InitializeDataGrids();
         }
 
@@ -40,34 +180,30 @@ namespace WpfApp1
 
         private void CreateMatrixA()
         {
-            if (MatrixADataGrid == null) return;
-
-            MatrixADataGrid.Columns.Clear();
-            MatrixADataGrid.Items.Clear();
-            matrixAData.Clear();
-
             try
             {
+                matrixAData.Clear();
+
+                // Создаем столбцы для DataGrid
+                MatrixADataGrid.Columns.Clear();
+
                 for (int i = 0; i < matrixSize; i++)
                 {
                     var column = new DataGridTextColumn()
                     {
                         Header = $"x{i + 1}",
-                        Binding = new System.Windows.Data.Binding($"[{i}]"),
+                        Binding = new System.Windows.Data.Binding($"[{i}]") { Mode = System.Windows.Data.BindingMode.TwoWay },
                         Width = new DataGridLength(60, DataGridLengthUnitType.Pixel)
                     };
                     MatrixADataGrid.Columns.Add(column);
                 }
 
+                // Создаем строки матрицы
                 for (int i = 0; i < matrixSize; i++)
                 {
-                    var row = new double[matrixSize];
-                    for (int j = 0; j < matrixSize; j++)
-                    {
-                        row[j] = 0;
-                    }
+                    var row = new MatrixRow(matrixSize);
+                    row.RowIndex = i + 1;
                     matrixAData.Add(row);
-                    MatrixADataGrid.Items.Add(row);
                 }
 
                 MatrixADataGrid.UpdateLayout();
@@ -80,47 +216,69 @@ namespace WpfApp1
 
         private void CreateVectorB()
         {
-            if (VectorBDataGrid == null) return;
-
-            VectorBDataGrid.Columns.Clear();
-            VectorBDataGrid.Items.Clear();
-            vectorBData.Clear();
-
-            VectorBDataGrid.Columns.Add(new DataGridTextColumn()
+            try
             {
-                Header = "Значение",
-                Binding = new System.Windows.Data.Binding("[0]"),
-                Width = new DataGridLength(100, DataGridLengthUnitType.Pixel)
-            });
+                vectorBData.Clear();
 
-            for (int i = 0; i < matrixSize; i++)
+                VectorBDataGrid.Columns.Clear();
+
+                // Добавляем номер строки
+                VectorBDataGrid.Columns.Add(new DataGridTextColumn()
+                {
+                    Header = "№",
+                    Binding = new System.Windows.Data.Binding("Index") { Mode = System.Windows.Data.BindingMode.OneWay },
+                    Width = new DataGridLength(40, DataGridLengthUnitType.Pixel),
+                    IsReadOnly = true
+                });
+
+                // Добавляем значение
+                VectorBDataGrid.Columns.Add(new DataGridTextColumn()
+                {
+                    Header = "Значение",
+                    Binding = new System.Windows.Data.Binding("Value") { Mode = System.Windows.Data.BindingMode.TwoWay },
+                    Width = new DataGridLength(100, DataGridLengthUnitType.Pixel)
+                });
+
+                // Создаем элементы вектора B
+                for (int i = 0; i < matrixSize; i++)
+                {
+                    vectorBData.Add(new VectorBItem(i + 1, 0));
+                }
+            }
+            catch (Exception ex)
             {
-                var row = new double[1] { 0 };
-                vectorBData.Add(row);
-                VectorBDataGrid.Items.Add(row);
+                ShowStatus($"Ошибка при создании вектора B: {ex.Message}", true);
             }
         }
 
         private void CreateVectorX()
         {
-            if (VectorXDataGrid == null) return;
-
-            VectorXDataGrid.Columns.Clear();
-            VectorXDataGrid.Items.Clear();
-
-            VectorXDataGrid.Columns.Add(new DataGridTextColumn()
+            try
             {
-                Header = "Переменная",
-                Binding = new System.Windows.Data.Binding("Variable"),
-                Width = new DataGridLength(80, DataGridLengthUnitType.Pixel)
-            });
+                solutionData.Clear();
 
-            VectorXDataGrid.Columns.Add(new DataGridTextColumn()
+                VectorXDataGrid.Columns.Clear();
+
+                VectorXDataGrid.Columns.Add(new DataGridTextColumn()
+                {
+                    Header = "Переменная",
+                    Binding = new System.Windows.Data.Binding("Variable") { Mode = System.Windows.Data.BindingMode.OneWay },
+                    Width = new DataGridLength(80, DataGridLengthUnitType.Pixel),
+                    IsReadOnly = true
+                });
+
+                VectorXDataGrid.Columns.Add(new DataGridTextColumn()
+                {
+                    Header = "Значение",
+                    Binding = new System.Windows.Data.Binding("Value") { Mode = System.Windows.Data.BindingMode.OneWay },
+                    Width = new DataGridLength(100, DataGridLengthUnitType.Pixel),
+                    IsReadOnly = true
+                });
+            }
+            catch (Exception ex)
             {
-                Header = "Значение",
-                Binding = new System.Windows.Data.Binding("Value"),
-                Width = new DataGridLength(100, DataGridLengthUnitType.Pixel)
-            });
+                ShowStatus($"Ошибка при создании вектора X: {ex.Message}", true);
+            }
         }
 
         private void MatrixSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -160,7 +318,7 @@ namespace WpfApp1
             for (int i = 0; i < matrixSize && i < matrixAData.Count; i++)
             {
                 var row = matrixAData[i];
-                for (int j = 0; j < matrixSize && j < row.Length; j++)
+                for (int j = 0; j < matrixSize && j < row.Count; j++)
                 {
                     matrix[i, j] = row[j];
                 }
@@ -174,20 +332,20 @@ namespace WpfApp1
 
             for (int i = 0; i < matrixSize && i < vectorBData.Count; i++)
             {
-                var row = vectorBData[i];
-                vector[i] = row[0];
+                vector[i] = vectorBData[i].Value;
             }
             return vector;
         }
 
         private bool ValidateInputs()
         {
+            // Проверка матрицы A
             for (int i = 0; i < matrixSize && i < matrixAData.Count; i++)
             {
                 var row = matrixAData[i];
-                for (int j = 0; j < matrixSize && j < row.Length; j++)
+                for (int j = 0; j < matrixSize && j < row.Count; j++)
                 {
-                    if (!double.TryParse(row[j].ToString(), out _))
+                    if (double.IsNaN(row[j]) || double.IsInfinity(row[j]))
                     {
                         ShowStatus($"Ошибка: Некорректное значение в матрице A[{i + 1},{j + 1}]", true);
                         return false;
@@ -195,10 +353,10 @@ namespace WpfApp1
                 }
             }
 
+            // Проверка вектора B
             for (int i = 0; i < matrixSize && i < vectorBData.Count; i++)
             {
-                var row = vectorBData[i];
-                if (!double.TryParse(row[0].ToString(), out _))
+                if (double.IsNaN(vectorBData[i].Value) || double.IsInfinity(vectorBData[i].Value))
                 {
                     ShowStatus($"Ошибка: Некорректное значение в векторе B[{i + 1}]", true);
                     return false;
@@ -208,22 +366,32 @@ namespace WpfApp1
             return true;
         }
 
-        private void ImportFromExcel_Click(object sender, RoutedEventArgs e)
+        private async void ImportFromExcel_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 OpenFileDialog openFileDialog = new OpenFileDialog
                 {
-                    Filter = "CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                    Title = "Импорт данных из Excel - выберите CSV файл"
+                    Filter = "CSV files (*.csv)|*.csv|Excel files (*.xlsx)|*.xlsx|Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                    Title = "Импорт данных из Excel"
                 };
 
                 if (openFileDialog.ShowDialog() == true)
                 {
                     string fileName = Path.GetFileName(openFileDialog.FileName);
+                    string extension = Path.GetExtension(openFileDialog.FileName).ToLower();
+
                     ShowStatus($"Импорт данных из {fileName}...", false);
 
-                    Task.Run(() => ImportDataFromCSV(openFileDialog.FileName));
+                    if (extension == ".csv" || extension == ".txt")
+                    {
+                        await Task.Run(() => ImportDataFromCSV(openFileDialog.FileName));
+                    }
+                    else if (extension == ".xlsx")
+                    {
+                        MessageBox.Show("Для импорта из .xlsx файлов необходимо сначала экспортировать данные в CSV формат или использовать специализированные библиотеки.",
+                            "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
             }
             catch (Exception ex)
@@ -232,27 +400,511 @@ namespace WpfApp1
             }
         }
 
-        private void ImportFromGoogleTables_Click(object sender, RoutedEventArgs e)
+        private async void ImportFromGoogleTables_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                OpenFileDialog openFileDialog = new OpenFileDialog
-                {
-                    Filter = "CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                    Title = "Импорт данных из Google Tables - выберите CSV файл"
-                };
+                // Показываем диалог для ввода URL Google Таблицы
+                GoogleSheetsDialogWindow dialogWindow = new GoogleSheetsDialogWindow();
+                dialogWindow.Owner = this;
 
-                if (openFileDialog.ShowDialog() == true)
+                if (dialogWindow.ShowDialog() == true && !string.IsNullOrEmpty(dialogWindow.SheetsUrl))
                 {
-                    string fileName = Path.GetFileName(openFileDialog.FileName);
-                    ShowStatus($"Импорт данных из {fileName}...", false);
-
-                    Task.Run(() => ImportDataFromCSV(openFileDialog.FileName));
+                    ShowStatus("Импорт данных из Google Таблиц...", false);
+                    await ImportFromGoogleSheetsAsync(dialogWindow.SheetsUrl);
                 }
             }
             catch (Exception ex)
             {
                 ShowStatus($"Ошибка при импорте из Google Tables: {ex.Message}", true);
+            }
+        }
+
+        private async Task ImportFromGoogleSheetsAsync(string url)
+        {
+            try
+            {
+                ShowStatus("Подключение к Google Таблицам...", false);
+
+                // Конвертируем URL Google Таблицы в CSV URL
+                string csvUrl = ConvertGoogleSheetsUrlToCsv(url);
+
+                // Загружаем данные с таймаутом
+                using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                {
+                    var response = await httpClient.GetAsync(csvUrl, timeoutCts.Token);
+                    response.EnsureSuccessStatusCode();
+
+                    string csvContent = await response.Content.ReadAsStringAsync();
+
+                    if (string.IsNullOrWhiteSpace(csvContent))
+                    {
+                        ShowStatus("Таблица пустая", true);
+                        return;
+                    }
+
+                    ShowStatus("Анализ данных...", false);
+
+                    // Анализируем и импортируем данные
+                    await AnalyzeAndImportGoogleSheetsData(csvContent);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                ShowStatus("Таймаут при загрузке данных", true);
+            }
+            catch (HttpRequestException ex)
+            {
+                ShowStatus($"Ошибка сети: {ex.Message}", true);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка: {ex.Message}", true);
+            }
+        }
+
+        private async Task AnalyzeAndImportGoogleSheetsData(string csvContent)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    // Разбиваем на строки и очищаем
+                    var lines = csvContent.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(line => line.Trim())
+                        .Where(line => !string.IsNullOrWhiteSpace(line))
+                        .ToArray();
+
+                    if (lines.Length == 0)
+                    {
+                        ShowStatus("Нет данных для импорта", true);
+                        return;
+                    }
+
+                    // Анализируем структуру данных
+                    var analysisResult = AnalyzeDataStructure(lines);
+
+                    switch (analysisResult.DataFormat)
+                    {
+                        case DataFormatType.MatrixWithVector:
+                            ImportMatrixWithVector(lines, analysisResult.MatrixSize);
+                            break;
+
+                        case DataFormatType.MatrixOnly:
+                            ImportMatrixOnly(lines, analysisResult.MatrixSize);
+                            break;
+
+                        case DataFormatType.LabeledSections:
+                            ImportLabeledSections(lines);
+                            break;
+
+                        case DataFormatType.Unknown:
+                            ShowStatus("Не удалось распознать формат данных", true);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowStatus($"Ошибка при анализе данных: {ex.Message}", true);
+                }
+            });
+        }
+
+        private DataAnalysisResult AnalyzeDataStructure(string[] lines)
+        {
+            // Проверяем, есть ли метки
+            bool hasMatrixLabel = lines.Any(l => l.ToLower().Contains("матрица") || l.ToLower().Contains("matrix"));
+            bool hasVectorLabel = lines.Any(l => l.ToLower().Contains("вектор") || l.ToLower().Contains("vector"));
+
+            if (hasMatrixLabel || hasVectorLabel)
+            {
+                return new DataAnalysisResult
+                {
+                    DataFormat = DataFormatType.LabeledSections,
+                    MatrixSize = DetectSizeFromLabeledSections(lines)
+                };
+            }
+
+            // Анализируем первую строку для определения формата
+            var firstLineParts = lines[0].Split(',');
+            int cols = firstLineParts.Length;
+            int rows = lines.Length;
+
+            // Проверяем, является ли последний столбец вектором B
+            bool lastColumnIsVector = DetectIfLastColumnIsVector(lines);
+
+            if (lastColumnIsVector && rows == cols - 1)
+            {
+                return new DataAnalysisResult
+                {
+                    DataFormat = DataFormatType.MatrixWithVector,
+                    MatrixSize = rows
+                };
+            }
+
+            if (rows == cols)
+            {
+                return new DataAnalysisResult
+                {
+                    DataFormat = DataFormatType.MatrixOnly,
+                    MatrixSize = rows
+                };
+            }
+
+            return new DataAnalysisResult
+            {
+                DataFormat = DataFormatType.Unknown,
+                MatrixSize = Math.Min(rows, cols)
+            };
+        }
+
+        private bool DetectIfLastColumnIsVector(string[] lines)
+        {
+            try
+            {
+                int sampleRows = Math.Min(10, lines.Length);
+
+                for (int i = 0; i < sampleRows; i++)
+                {
+                    var parts = lines[i].Split(',');
+                    if (parts.Length < 2) return false;
+
+                    // Проверяем, что все строки имеют одинаковое количество столбцов
+                    if (i > 0)
+                    {
+                        var prevParts = lines[i - 1].Split(',');
+                        if (parts.Length != prevParts.Length) return false;
+                    }
+
+                    // Пытаемся распарсить все значения
+                    for (int j = 0; j < parts.Length; j++)
+                    {
+                        string value = parts[j].Trim();
+                        if (!double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                        {
+                            // Если не число, проверяем специальные случаи
+                            if (!string.IsNullOrWhiteSpace(value) &&
+                                !value.Equals("-") &&
+                                !value.Equals(".") &&
+                                !value.Equals(","))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private int DetectSizeFromLabeledSections(string[] lines)
+        {
+            try
+            {
+                bool inMatrixSection = false;
+                int matrixRows = 0;
+
+                foreach (var line in lines)
+                {
+                    string lowerLine = line.ToLower();
+
+                    if (lowerLine.Contains("матрица") || lowerLine.Contains("matrix"))
+                    {
+                        inMatrixSection = true;
+                        continue;
+                    }
+
+                    if (lowerLine.Contains("вектор") || lowerLine.Contains("vector"))
+                    {
+                        break;
+                    }
+
+                    if (inMatrixSection)
+                    {
+                        // Проверяем, является ли строка данными матрицы
+                        var parts = line.Split(',');
+                        bool isDataRow = parts.All(p =>
+                            double.TryParse(p.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out _));
+
+                        if (isDataRow)
+                        {
+                            matrixRows++;
+                        }
+                    }
+                }
+
+                return matrixRows;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private void ImportMatrixWithVector(string[] lines, int size)
+        {
+            if (size <= 0 || size > MAX_MATRIX_SIZE)
+            {
+                ShowStatus($"Некорректный размер матрицы: {size}", true);
+                return;
+            }
+
+            // Обновляем размер
+            matrixSize = size;
+            UpdateMatrixSizeComboBox();
+            InitializeDataGrids();
+
+            // Импортируем данные
+            for (int i = 0; i < size && i < lines.Length; i++)
+            {
+                var parts = lines[i].Split(',');
+
+                if (i < matrixAData.Count)
+                {
+                    var row = matrixAData[i];
+                    for (int j = 0; j < size && j < parts.Length - 1; j++)
+                    {
+                        ParseAndSetValue(parts[j], out double value);
+                        row[j] = value;
+                    }
+                }
+
+                if (i < vectorBData.Count && parts.Length > size)
+                {
+                    ParseAndSetValue(parts[parts.Length - 1], out double value);
+                    vectorBData[i].Value = value;
+                }
+            }
+
+            MatrixADataGrid.Items.Refresh();
+            VectorBDataGrid.Items.Refresh();
+            ShowStatus($"Импортировано: матрица {size}×{size} с вектором B", false);
+        }
+
+        private void ImportMatrixOnly(string[] lines, int size)
+        {
+            if (size <= 0 || size > MAX_MATRIX_SIZE)
+            {
+                ShowStatus($"Некорректный размер матрицы: {size}", true);
+                return;
+            }
+
+            matrixSize = size;
+            UpdateMatrixSizeComboBox();
+            InitializeDataGrids();
+
+            for (int i = 0; i < size && i < lines.Length; i++)
+            {
+                var parts = lines[i].Split(',');
+
+                if (i < matrixAData.Count)
+                {
+                    var row = matrixAData[i];
+                    for (int j = 0; j < size && j < parts.Length; j++)
+                    {
+                        ParseAndSetValue(parts[j], out double value);
+                        row[j] = value;
+                    }
+                }
+            }
+
+            MatrixADataGrid.Items.Refresh();
+            VectorBDataGrid.Items.Refresh();
+            ShowStatus($"Импортирована матрица {size}×{size}", false);
+        }
+
+        private void ImportLabeledSections(string[] lines)
+        {
+            try
+            {
+                bool inMatrixSection = false;
+                bool inVectorSection = false;
+                int matrixRowIndex = 0;
+                int vectorRowIndex = 0;
+                List<double[]> tempMatrixData = new List<double[]>();
+                List<double[]> tempVectorData = new List<double[]>();
+
+                foreach (var line in lines)
+                {
+                    string lowerLine = line.ToLower();
+
+                    if (lowerLine.Contains("матрица") || lowerLine.Contains("matrix"))
+                    {
+                        inMatrixSection = true;
+                        inVectorSection = false;
+                        continue;
+                    }
+
+                    if (lowerLine.Contains("вектор") || lowerLine.Contains("vector"))
+                    {
+                        inMatrixSection = false;
+                        inVectorSection = true;
+                        continue;
+                    }
+
+                    if (inMatrixSection)
+                    {
+                        var parts = line.Split(',');
+                        var row = new double[parts.Length];
+
+                        for (int j = 0; j < parts.Length; j++)
+                        {
+                            ParseAndSetValue(parts[j], out row[j]);
+                        }
+
+                        tempMatrixData.Add(row);
+                        matrixRowIndex++;
+                    }
+                    else if (inVectorSection)
+                    {
+                        var parts = line.Split(',');
+                        foreach (var part in parts)
+                        {
+                            if (double.TryParse(part.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double value))
+                            {
+                                tempVectorData.Add(new double[] { value });
+                                vectorRowIndex++;
+                            }
+                        }
+                    }
+                }
+
+                // Определяем размер матрицы
+                int detectedSize = tempMatrixData.Count;
+
+                if (detectedSize > 0 && detectedSize <= MAX_MATRIX_SIZE)
+                {
+                    matrixSize = detectedSize;
+                    UpdateMatrixSizeComboBox();
+                    InitializeDataGrids();
+
+                    // Заполняем матрицу A
+                    for (int i = 0; i < detectedSize && i < tempMatrixData.Count; i++)
+                    {
+                        if (i < matrixAData.Count)
+                        {
+                            var targetRow = matrixAData[i];
+                            var sourceRow = tempMatrixData[i];
+
+                            for (int j = 0; j < detectedSize && j < sourceRow.Length; j++)
+                            {
+                                targetRow[j] = sourceRow[j];
+                            }
+                        }
+                    }
+
+                    // Заполняем вектор B если есть данные
+                    if (tempVectorData.Count > 0)
+                    {
+                        for (int i = 0; i < detectedSize && i < tempVectorData.Count; i++)
+                        {
+                            if (i < vectorBData.Count)
+                            {
+                                vectorBData[i].Value = tempVectorData[i][0];
+                            }
+                        }
+                    }
+
+                    MatrixADataGrid.Items.Refresh();
+                    VectorBDataGrid.Items.Refresh();
+
+                    string status = tempVectorData.Count > 0
+                        ? $"Импортировано: матрица {detectedSize}×{detectedSize} с вектором B"
+                        : $"Импортирована матрица {detectedSize}×{detectedSize}";
+
+                    ShowStatus(status, false);
+                }
+                else
+                {
+                    ShowStatus($"Не удалось определить размер матрицы", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Ошибка при импорте секций: {ex.Message}", true);
+            }
+        }
+
+        private bool ParseAndSetValue(string input, out double result)
+        {
+            if (double.TryParse(input.Trim().Replace(',', '.'),
+                NumberStyles.Any, CultureInfo.InvariantCulture, out result))
+            {
+                return true;
+            }
+            result = 0;
+            return false;
+        }
+
+        private string ConvertGoogleSheetsUrlToCsv(string url)
+        {
+            try
+            {
+                // Нормализуем URL
+                if (!url.StartsWith("http"))
+                {
+                    url = "https://" + url;
+                }
+
+                Uri uri = new Uri(url);
+
+                // Извлекаем ID таблицы
+                var segments = uri.Segments;
+                string spreadsheetId = "";
+
+                for (int i = 0; i < segments.Length; i++)
+                {
+                    if (segments[i].Equals("d/", StringComparison.OrdinalIgnoreCase) &&
+                        i + 1 < segments.Length)
+                    {
+                        spreadsheetId = segments[i + 1].TrimEnd('/');
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(spreadsheetId))
+                {
+                    // Альтернативный способ извлечения ID
+                    var match = System.Text.RegularExpressions.Regex.Match(
+                        url, @"/spreadsheets/d/([a-zA-Z0-9-_]+)");
+                    if (match.Success)
+                    {
+                        spreadsheetId = match.Groups[1].Value;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(spreadsheetId))
+                {
+                    throw new ArgumentException("Не удалось извлечь ID таблицы из URL");
+                }
+
+                // Извлекаем GID (ID листа)
+                string gid = "0";
+                if (uri.Fragment.Contains("gid="))
+                {
+                    gid = uri.Fragment.Split('=')[1];
+                }
+                else
+                {
+                    // Пробуем извлечь из query параметров
+                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    if (query["gid"] != null)
+                    {
+                        gid = query["gid"];
+                    }
+                }
+
+                // Формируем CSV URL
+                return $"https://docs.google.com/spreadsheets/d/{spreadsheetId}/export?format=csv&gid={gid}";
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Ошибка конвертации URL: {ex.Message}");
             }
         }
 
@@ -297,7 +949,7 @@ namespace WpfApp1
 
                     if (result == MessageBoxResult.Yes)
                     {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        Process.Start(new ProcessStartInfo
                         {
                             FileName = saveFileDialog.FileName,
                             UseShellExecute = true
@@ -348,7 +1000,7 @@ namespace WpfApp1
                             ImportVectorBFromCSV(lines);
 
                             bool hasDataA = matrixAData.Any(row => row.Any(val => val != 0));
-                            bool hasDataB = vectorBData.Any(row => row[0] != 0);
+                            bool hasDataB = vectorBData.Any(item => item.Value != 0);
 
                             if (hasDataA || hasDataB)
                             {
@@ -413,10 +1065,10 @@ namespace WpfApp1
                             var row = matrixAData[rowIndex];
                             for (int j = 0; j < matrixSize && j < values.Length; j++)
                             {
-                                string valueStr = values[j].Trim().Replace(',', '.'); 
+                                string valueStr = values[j].Trim().Replace(',', '.');
                                 if (double.TryParse(valueStr,
-                                    System.Globalization.NumberStyles.Any,
-                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    NumberStyles.Any,
+                                    CultureInfo.InvariantCulture,
                                     out double value))
                                 {
                                     row[j] = value;
@@ -459,13 +1111,17 @@ namespace WpfApp1
                     {
                         if (rowIndex < vectorBData.Count)
                         {
-                            if (double.TryParse(line.Trim(), out double value))
+                            string valueStr = line.Trim().Replace(',', '.');
+                            if (double.TryParse(valueStr,
+                                NumberStyles.Any,
+                                CultureInfo.InvariantCulture,
+                                out double value))
                             {
-                                vectorBData[rowIndex][0] = value;
+                                vectorBData[rowIndex].Value = value;
                             }
                             else
                             {
-                                vectorBData[rowIndex][0] = 0;
+                                vectorBData[rowIndex].Value = 0;
                             }
                         }
                         rowIndex++;
@@ -476,7 +1132,7 @@ namespace WpfApp1
             if (rowIndex == 0)
             {
                 int vectorStart = FindMatrixAEnd(lines);
-                if (vectorStart == -1) vectorStart = matrixSize; 
+                if (vectorStart == -1) vectorStart = matrixSize;
 
                 for (int i = 0; i < matrixSize && (vectorStart + i) < lines.Length; i++)
                 {
@@ -486,13 +1142,17 @@ namespace WpfApp1
 
                     if (i < vectorBData.Count)
                     {
-                        if (double.TryParse(line.Trim(), out double value))
+                        string valueStr = line.Trim().Replace(',', '.');
+                        if (double.TryParse(valueStr,
+                            NumberStyles.Any,
+                            CultureInfo.InvariantCulture,
+                            out double value))
                         {
-                            vectorBData[i][0] = value;
+                            vectorBData[i].Value = value;
                         }
                         else
                         {
-                            vectorBData[i][0] = 0;
+                            vectorBData[i].Value = 0;
                         }
                     }
                 }
@@ -510,13 +1170,13 @@ namespace WpfApp1
                     {
                         if (string.IsNullOrEmpty(lines[j].Trim()) || lines[j].Trim().StartsWith("//"))
                         {
-                            return j + 1; 
+                            return j + 1;
                         }
                     }
-                    return i + matrixSize + 1; 
+                    return i + matrixSize + 1;
                 }
             }
-            return -1; 
+            return -1;
         }
 
         private int DetectMatrixSizeFromCSV(string[] lines)
@@ -546,8 +1206,8 @@ namespace WpfApp1
                             {
                                 string cleanValue = value.Trim().Replace(',', '.');
                                 if (double.TryParse(cleanValue,
-                                    System.Globalization.NumberStyles.Any,
-                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    NumberStyles.Any,
+                                    CultureInfo.InvariantCulture,
                                     out _))
                                 {
                                     numbersCount++;
@@ -571,7 +1231,7 @@ namespace WpfApp1
                             if (size >= MAX_MATRIX_SIZE)
                                 break;
                         }
-                        return size > 0 ? size : 2; 
+                        return size > 0 ? size : 2;
                     }
                 }
 
@@ -591,8 +1251,8 @@ namespace WpfApp1
                     {
                         string cleanValue = value.Trim().Replace(',', '.');
                         if (double.TryParse(cleanValue,
-                            System.Globalization.NumberStyles.Any,
-                            System.Globalization.CultureInfo.InvariantCulture,
+                            NumberStyles.Any,
+                            CultureInfo.InvariantCulture,
                             out _))
                         {
                             validNumbers++;
@@ -618,44 +1278,7 @@ namespace WpfApp1
             }
             catch
             {
-                return 2; 
-            }
-        }
-
-        private bool ValidateCSVFormat(string[] lines)
-        {
-            try
-            {
-                bool hasMatrixA = false;
-                bool hasVectorB = false;
-
-                foreach (var line in lines)
-                {
-                    if (line.ToLower().Contains("матрица a") || line.ToLower().Contains("matrix a"))
-                        hasMatrixA = true;
-
-                    if (line.ToLower().Contains("вектор b") || line.ToLower().Contains("vector b"))
-                        hasVectorB = true;
-                }
-
-                if (!hasMatrixA && !hasVectorB)
-                {
-                    if (lines.Length >= 2)
-                    {
-                        var firstLine = lines[0].Split(',');
-                        if (firstLine.Length >= 2 && double.TryParse(firstLine[0].Trim(), out _))
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
-                return hasMatrixA || hasVectorB;
-            }
-            catch
-            {
-                return false;
+                return 2;
             }
         }
 
@@ -923,7 +1546,7 @@ namespace WpfApp1
         {
             if (VectorXDataGrid == null) return;
 
-            VectorXDataGrid.Items.Clear();
+            solutionData.Clear();
 
             if (solution.Length > 20)
             {
@@ -940,11 +1563,7 @@ namespace WpfApp1
 
             for (int i = 0; i < solution.Length; i++)
             {
-                VectorXDataGrid.Items.Add(new
-                {
-                    Variable = $"x{i + 1}",
-                    Value = Math.Round(solution[i], 6)
-                });
+                solutionData.Add(new SolutionItem($"x{i + 1}", Math.Round(solution[i], 6)));
             }
 
             if (ExecutionTimeTextBox != null)
@@ -977,7 +1596,7 @@ namespace WpfApp1
                 for (int i = 0; i < matrixAData.Count; i++)
                 {
                     var row = matrixAData[i];
-                    for (int j = 0; j < row.Length; j++)
+                    for (int j = 0; j < row.Count; j++)
                     {
                         row[j] = Math.Round(random.NextDouble() * 20 - 10, 2);
                     }
@@ -986,7 +1605,7 @@ namespace WpfApp1
 
                 for (int i = 0; i < vectorBData.Count; i++)
                 {
-                    vectorBData[i][0] = Math.Round(random.NextDouble() * 20 - 10, 2);
+                    vectorBData[i].Value = Math.Round(random.NextDouble() * 20 - 10, 2);
                 }
                 VectorBDataGrid.Items.Refresh();
 
@@ -1005,7 +1624,7 @@ namespace WpfApp1
                 for (int i = 0; i < matrixAData.Count; i++)
                 {
                     var row = matrixAData[i];
-                    for (int j = 0; j < row.Length; j++)
+                    for (int j = 0; j < row.Count; j++)
                     {
                         row[j] = 0;
                     }
@@ -1014,11 +1633,11 @@ namespace WpfApp1
 
                 for (int i = 0; i < vectorBData.Count; i++)
                 {
-                    vectorBData[i][0] = 0;
+                    vectorBData[i].Value = 0;
                 }
                 VectorBDataGrid.Items.Refresh();
 
-                VectorXDataGrid?.Items.Clear();
+                solutionData.Clear();
                 ExecutionTimeTextBox.Text = "";
                 StatusBorder.Visibility = Visibility.Collapsed;
 
@@ -1042,9 +1661,9 @@ namespace WpfApp1
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    using (var writer = new StreamWriter(saveFileDialog.FileName, false, System.Text.Encoding.UTF8))
+                    using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
                     {
-                        var invariantCulture = System.Globalization.CultureInfo.InvariantCulture;
+                        var invariantCulture = CultureInfo.InvariantCulture;
 
                         writer.WriteLine("Матрица A");
                         for (int i = 0; i < matrixAData.Count; i++)
@@ -1056,24 +1675,22 @@ namespace WpfApp1
 
                         writer.WriteLine();
 
-
                         writer.WriteLine("Вектор B");
                         for (int i = 0; i < vectorBData.Count; i++)
                         {
-                            var row = vectorBData[i];
-                            writer.WriteLine(row[0].ToString());
+                            var item = vectorBData[i];
+                            writer.WriteLine(item.Value.ToString("0.######", invariantCulture));
                         }
 
                         writer.WriteLine();
 
-                        if (VectorXDataGrid != null && VectorXDataGrid.Items.Count > 0)
+                        if (solutionData.Count > 0)
                         {
                             writer.WriteLine("Вектор X");
-                            foreach (var item in VectorXDataGrid.Items)
+                            foreach (var item in solutionData)
                             {
-                                dynamic solution = item;
-                                string value = solution.Value.ToString("0.######", invariantCulture);
-                                writer.WriteLine($"{solution.Variable},{value}");
+                                string value = item.Value.ToString("0.######", invariantCulture);
+                                writer.WriteLine($"{item.Variable},{value}");
                             }
                         }
                     }
@@ -1089,9 +1706,70 @@ namespace WpfApp1
 
         private void HelpImport_Click(object sender, RoutedEventArgs e)
         {
-            var helpWindow = new HelpWindow();
-            helpWindow.Owner = this;
-            helpWindow.ShowDialog();
+            string helpText = @"ИНСТРУКЦИЯ ПО ИМПОРТУ ДАННЫХ
+
+1. ФОРМАТ CSV ФАЙЛА:
+   - Матрица A и вектор B должны быть разделены пустой строкой
+   - Можно использовать заголовки 'Матрица A' и 'Вектор B'
+   - Разделитель - запятая (,)
+   - Десятичный разделитель - точка (.)
+
+2. ФОРМАТ GOOGLE ТАБЛИЦ:
+   - Матрица A: первые N столбцов, N строк
+   - Вектор B: последний столбец или отдельный блок
+   - Поддерживаются форматы:
+     * Матрица и вектор в одном блоке
+     * Отдельные секции с метками
+     * Только матрица
+
+3. ПРИМЕР ФАЙЛА:
+   Матрица A
+   1,2,3
+   4,5,6
+   7,8,9
+
+   Вектор B
+   10
+   11
+   12
+
+4. ИМПОРТ ИЗ GOOGLE ТАБЛИЦ:
+   - Таблица должна быть публично доступной
+   - Используйте меню 'Файл → Импорт данных → Из Google Tables'
+   - Вставьте ссылку на таблицу
+
+5. СОЗДАНИЕ ШАБЛОНА:
+   - Используйте меню 'Файл → Импорт данных → Создать шаблон CSV'
+   - Отредактируйте созданный файл
+   - Импортируйте через меню 'Файл → Импорт данных'";
+
+            MessageBox.Show(helpText, "Инструкция по импорту", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            string aboutText = @"ПРОГРАММА ДЛЯ РЕШЕНИЯ СЛАУ
+
+Версия: 1.0
+Разработчик: Студент КемГУ
+
+ФУНКЦИОНАЛЬНОСТЬ:
+- Решение систем линейных алгебраических уравнений
+- Три метода решения: Гаусса, Жордана-Гаусса, Крамера
+- Импорт данных из CSV файлов и Google Таблиц
+- Экспорт результатов
+- Генерация случайных данных
+
+ТРЕБОВАНИЯ К СИСТЕМЕ:
+- .NET Framework 4.7.2 или выше
+- 100 МБ свободного места на диске
+- Интернет-соединение для импорта из Google Таблиц
+
+Лабораторная работа №6
+Кемеровский государственный университет
+2024 год";
+
+            MessageBox.Show(aboutText, "О программе", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)

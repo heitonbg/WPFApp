@@ -9,6 +9,9 @@ using Microsoft.Win32;
 using System.IO;
 using System.Text;
 using OfficeOpenXml;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace WpfApp1
 {
@@ -21,6 +24,409 @@ namespace WpfApp1
         {
             InitializeComponent();
             GenerateRandomData();
+        }
+
+        private void LoadExcelFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            LoadExcel_Click(sender, e);
+        }
+
+        private void LoadGoogleSheetsFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            LoadGoogleSheets_Click(sender, e);
+        }
+
+        private void SaveResultsFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            SaveResults_Click(sender, e);
+        }
+
+        private void ExitFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            Exit_Click(sender, e);
+        }
+
+        private void GenerateDataFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            GenerateData_Click(sender, e);
+        }
+
+        private void ManualInputFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            ManualInput_Click(sender, e);
+        }
+
+        private void ClearFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            Clear_Click(sender, e);
+        }
+
+        private void SortFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            Sort_Click(sender, e);
+        }
+
+        private void SelectAllAlgorithmsFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            SelectAllAlgorithms_Click(sender, e);
+        }
+
+        private void DeselectAllAlgorithmsFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            DeselectAllAlgorithms_Click(sender, e);
+        }
+
+        private void ClearVisualizationFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            ClearVisualization_Click(sender, e);
+        }
+
+        private void AboutFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            About_Click(sender, e);
+        }
+
+        private void HelpFromMenu_Click(object sender, RoutedEventArgs e)
+        {
+            Help_Click(sender, e);
+        }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void SelectAllAlgorithms_Click(object sender, RoutedEventArgs e)
+        {
+            cbBubble.IsChecked = true;
+            cbInsertion.IsChecked = true;
+            cbShaker.IsChecked = true;
+            cbQuick.IsChecked = true;
+            cbBogo.IsChecked = true;
+        }
+
+        private void DeselectAllAlgorithms_Click(object sender, RoutedEventArgs e)
+        {
+            cbBubble.IsChecked = false;
+            cbInsertion.IsChecked = false;
+            cbShaker.IsChecked = false;
+            cbQuick.IsChecked = false;
+            cbBogo.IsChecked = false;
+        }
+
+        private async void LoadGoogleSheets_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowGoogleSheetsDialog();
+        }
+
+        private void SaveResults_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog saveDialog = new SaveFileDialog
+            {
+                Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*",
+                Title = "Сохранить результаты",
+                DefaultExt = ".txt"
+            };
+
+            if (saveDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    File.WriteAllText(saveDialog.FileName, txtResults.Text);
+                    MessageBox.Show("Результаты успешно сохранены!", "Сохранение",
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Олимпиадные сортировки v1.0\n\n" +
+                "Программа для сравнения различных алгоритмов сортировки.\n" +
+                "Поддерживает загрузку данных из различных источников:\n" +
+                "- Файлы Excel (.xlsx)\n" +
+                "- Google Sheets (по ссылке)\n" +
+                "- Ручной ввод\n\n" +
+                "Реализованные алгоритмы:\n" +
+                "- Пузырьковая сортировка\n" +
+                "- Сортировка вставками\n" +
+                "- Шейкерная сортировка\n" +
+                "- Быстрая сортировка\n" +
+                "- BOGO сортировка\n\n" +
+                "Визуализация",
+                "О программе",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        private void Help_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Руководство пользователя:\n\n" +
+                "1. Сгенерируйте или загрузите данные\n" +
+                "   - Генерация: укажите диапазон и количество элементов\n" +
+                "   - Загрузка из файла: поддерживается Excel (.xlsx)\n" +
+                "   - Загрузка из Google Sheets: вставьте ссылку на таблицу\n" +
+                "   - Ручной ввод: введите значения через Enter\n\n" +
+                "2. Выберите алгоритмы сортировки\n" +
+                "3. Укажите порядок сортировки (по возрастанию/убыванию)\n" +
+                "4. Для Bogo сортировки задайте ограничение итераций (если нужно)\n" +
+                "5. Нажмите 'Выполнить сортировку'\n\n" +
+                "Советы:\n" +
+                "- Bogo сортировка работает очень медленно на больших данных\n" +
+                "- Для больших наборов данных используйте Быструю сортировку\n" +
+                "- Визуализация отображается только для ≤100 элементов",
+                "Руководство пользователя",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        private void ClearVisualization_Click(object sender, RoutedEventArgs e)
+        {
+            visualizationCanvas.Children.Clear();
+        }
+
+        // ============ GOOGLE SHEETS ПАРСИНГ ============
+        private async Task ShowGoogleSheetsDialog()
+        {
+            try
+            {
+                var dialog = new GoogleSheetsDialog();
+                if (dialog.ShowDialog() == true)
+                {
+                    string url = dialog.Url;
+                    await LoadDataFromGoogleSheets(url);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при открытии диалога Google Sheets: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task LoadDataFromGoogleSheets(string url)
+        {
+            try
+            {
+                txtResults.Text = "Загрузка данных из Google Sheets...\n";
+
+                string sheetId = ExtractSheetId(url);
+                if (string.IsNullOrEmpty(sheetId))
+                {
+                    MessageBox.Show("Не удалось извлечь ID таблицы из ссылки. Убедитесь, что ссылка корректна.", "Ошибка",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                string csvUrl = $"https://docs.google.com/spreadsheets/d/{sheetId}/export?format=csv";
+
+                using (HttpClient client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+
+                    HttpResponseMessage response = await client.GetAsync(csvUrl);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string csvContent = await response.Content.ReadAsStringAsync();
+                        List<double> data = ParseGoogleSheetsCsv(csvContent);
+
+                        if (data.Any())
+                        {
+                            if (data.Count > 10000)
+                            {
+                                var result = MessageBox.Show($"Таблица содержит {data.Count} элементов. Это может занять значительное время и память. Продолжить?",
+                                                           "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                                if (result == MessageBoxResult.No)
+                                    return;
+                            }
+
+                            originalData = data;
+                            UpdateDataGrid();
+                            txtResults.Text = $"УСПЕШНО ЗАГРУЖЕНО ИЗ GOOGLE SHEETS:\n";
+                            txtResults.Text += $"Ссылка: {url}\n";
+                            txtResults.Text += $"Количество элементов: {data.Count}\n";
+                            txtResults.Text += $"Диапазон данных: {data.Min():F3} - {data.Max():F3}\n";
+
+                            if (data.Count > 10)
+                            {
+                                txtResults.Text += $"Первые 10 элементов: {string.Join(", ", data.Take(10).Select(x => x.ToString("F3")))}...\n\n";
+                            }
+                            else
+                            {
+                                txtResults.Text += $"Элементы: {string.Join(", ", data.Select(x => x.ToString("F3")))}\n\n";
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("Не удалось найти числовые данные в таблице Google Sheets.\n\n" +
+                                          "Убедитесь, что:\n" +
+                                          "1. Таблица имеет публичный доступ\n" +
+                                          "2. Данные находятся в первом столбце\n" +
+                                          "3. Ячейки содержат числовые значения",
+                                          "Информация",
+                                          MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Не удалось загрузить данные. Проверьте:\n" +
+                                      "1. Доступность интернета\n" +
+                                      "2. Публичный доступ к таблице\n" +
+                                      "3. Корректность ссылки\n\n" +
+                                      $"HTTP код: {response.StatusCode}",
+                                      "Ошибка загрузки",
+                                      MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (HttpRequestException hrex)
+            {
+                MessageBox.Show($"Ошибка сети: {hrex.Message}\n\nПроверьте подключение к интернету и доступность таблицы.",
+                              "Ошибка сети",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (TaskCanceledException)
+            {
+                MessageBox.Show("Превышено время ожидания при загрузке данных. Проверьте скорость интернета или размер таблицы.",
+                              "Таймаут",
+                              MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке из Google Sheets:\n{ex.Message}",
+                              "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private string ExtractSheetId(string url)
+        {
+            try
+            {
+                var patterns = new[]
+                {
+                    @"\/d\/([a-zA-Z0-9-_]+)", 
+                    @"\/spreadsheets\/d\/([a-zA-Z0-9-_]+)", 
+                    @"key=([a-zA-Z0-9-_]+)", 
+                    @"id=([a-zA-Z0-9-_]+)" 
+                };
+
+                foreach (var pattern in patterns)
+                {
+                    var match = Regex.Match(url, pattern);
+                    if (match.Success && match.Groups.Count > 1)
+                    {
+                        return match.Groups[1].Value;
+                    }
+                }
+
+                var parts = url.Split('/');
+                foreach (var part in parts)
+                {
+                    if (part.Length > 20 && !part.Contains("?") && !part.Contains("&"))
+                    {
+                        return part;
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private List<double> ParseGoogleSheetsCsv(string csvContent)
+        {
+            List<double> data = new List<double>();
+
+            try
+            {
+                var lines = csvContent.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    var values = ParseCsvLine(line);
+
+                    foreach (var value in values)
+                    {
+                        string cleanedValue = value.Trim()
+                            .Replace("\"", "")
+                            .Replace("'", "")
+                            .Replace("(", "")
+                            .Replace(")", "")
+                            .Replace("[", "")
+                            .Replace("]", "")
+                            .Replace("{", "")
+                            .Replace("}", "");
+
+                        if (double.TryParse(cleanedValue,
+                            System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out double number))
+                        {
+                            data.Add(Math.Round(number, 3)); 
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при обработке данных CSV: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return data;
+        }
+
+        private List<string> ParseCsvLine(string line)
+        {
+            var values = new List<string>();
+            bool inQuotes = false;
+            StringBuilder currentValue = new StringBuilder();
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                char currentChar = line[i];
+
+                if (currentChar == '"')
+                {
+                    if (inQuotes && i < line.Length - 1 && line[i + 1] == '"')
+                    {
+                        currentValue.Append('"');
+                        i++; 
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (currentChar == ',' && !inQuotes)
+                {
+                    values.Add(currentValue.ToString());
+                    currentValue.Clear();
+                }
+                else
+                {
+                    currentValue.Append(currentChar);
+                }
+            }
+
+            values.Add(currentValue.ToString());
+            return values;
         }
 
         private void GenerateRandomData()
@@ -43,7 +449,6 @@ namespace WpfApp1
                     return;
                 }
 
-                // Убрано ограничение на количество элементов
                 if (count <= 0)
                 {
                     MessageBox.Show("Количество элементов должно быть больше 0!", "Ошибка",
@@ -51,7 +456,6 @@ namespace WpfApp1
                     return;
                 }
 
-                // Предупреждение для большого количества элементов
                 if (count > 10000)
                 {
                     var result = MessageBox.Show($"Вы собираетесь сгенерировать {count} элементов. Это может занять значительное время и память. Продолжить?",
@@ -65,9 +469,8 @@ namespace WpfApp1
 
                 for (int i = 0; i < count; i++)
                 {
-                    // Генерация double чисел с точностью до тысячных
                     double randomValue = min + (rand.NextDouble() * (max - min));
-                    randomValue = Math.Round(randomValue, 3); // Округление до 3 знаков после запятой
+                    randomValue = Math.Round(randomValue, 3); 
                     originalData.Add(randomValue);
                 }
 
@@ -171,7 +574,6 @@ namespace WpfApp1
 
                 if (data.Any())
                 {
-                    // Предупреждение для большого количества элементов
                     if (data.Count > 10000)
                     {
                         var result = MessageBox.Show($"Файл содержит {data.Count} элементов. Это может занять значительное время и память. Продолжить?",
@@ -188,7 +590,6 @@ namespace WpfApp1
                     txtResults.Text += $"Количество элементов: {data.Count}\n";
                     txtResults.Text += $"Диапазон данных: {data.Min():F3} - {data.Max():F3}\n";
 
-                    // Показываем только первые 10 элементов для больших наборов
                     if (data.Count > 10)
                     {
                         txtResults.Text += $"Первые 10 элементов: {string.Join(", ", data.Take(10).Select(x => x.ToString("F3")))}...\n\n";
@@ -246,7 +647,7 @@ namespace WpfApp1
                                 System.Globalization.CultureInfo.InvariantCulture,
                                 out double number))
                             {
-                                data.Add(Math.Round(number, 3)); // Округление до 3 знаков
+                                data.Add(Math.Round(number, 3)); 
                             }
                         }
                     }
@@ -299,7 +700,7 @@ namespace WpfApp1
                         System.Globalization.CultureInfo.InvariantCulture,
                         out double number))
                     {
-                        data.Add(Math.Round(number, 3)); // Округление до 3 знаков
+                        data.Add(Math.Round(number, 3));
                     }
                 }
             }
@@ -381,16 +782,14 @@ namespace WpfApp1
             Dictionary<string, (TimeSpan Time, int Iterations, bool IsCompleted)> results = new Dictionary<string, (TimeSpan, int, bool)>();
             Dictionary<string, List<double>> sortedData = new Dictionary<string, List<double>>();
 
-            // Получаем максимальное количество итераций для Bogo
             int maxBogoIterations = 0;
             if (!int.TryParse(txtMaxBogoIterations.Text, out maxBogoIterations) || maxBogoIterations < 0)
             {
-                maxBogoIterations = 0; // 0 = без ограничений
+                maxBogoIterations = 0; 
             }
 
             txtResults.Text += "ВЫПОЛНЕНИЕ СОРТИРОВКИ:\n\n";
 
-            // Предупреждение для Bogo сортировки с большим количеством элементов
             if (cbBogo.IsChecked == true && data.Count > 12)
             {
                 var result = MessageBox.Show($"Bogo сортировка для {data.Count} элементов может занять очень много времени.\n" +
@@ -588,7 +987,7 @@ namespace WpfApp1
                         {
                             TextBlock valueLabel = new TextBlock
                             {
-                                Text = data[i].ToString("F2"), // Отображение с 2 знаками после запятой
+                                Text = data[i].ToString("F2"), 
                                 FontSize = 8,
                                 Foreground = Brushes.Black,
                                 HorizontalAlignment = HorizontalAlignment.Center
@@ -630,5 +1029,10 @@ namespace WpfApp1
                 visualizationCanvas.Children.Add(zeroLabel);
             }
         }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Освобождаем ресурсы, если нужно
+        }
     }
-}   
+}

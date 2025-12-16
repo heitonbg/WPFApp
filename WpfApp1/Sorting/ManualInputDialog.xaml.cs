@@ -30,7 +30,7 @@ namespace WpfApp1
                         System.Globalization.CultureInfo.InvariantCulture,
                         out double value))
                     {
-                        newData.Add(Math.Round(value, 3)); // Округление до 3 знаков
+                        newData.Add(Math.Round(value, 3)); 
                     }
                     else
                     {

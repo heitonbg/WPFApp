@@ -28,7 +28,6 @@ namespace WpfApp1
         {
             InitializeComponent();
 
-            // Инициализация модели графика
             PlotModel = new PlotModel
             {
                 Title = "График функции и поиск минимума",
@@ -37,7 +36,6 @@ namespace WpfApp1
                 PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
             };
 
-            // Настройка осей как в методе дихотомии
             PlotModel.Axes.Add(new LinearAxis
             {
                 Position = AxisPosition.Bottom,
@@ -229,14 +227,12 @@ namespace WpfApp1
             _minimumPoints.Clear();
             _iterationPoints.Clear();
 
-            // Находим диапазон значений для корректного отображения осей
             double minY = double.MaxValue;
             double maxY = double.MinValue;
 
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
 
@@ -247,14 +243,12 @@ namespace WpfApp1
                 {
                     double y = _newtonMethod.CalculateFunction(x);
 
-                    // Обновляем minY и maxY
                     if (!double.IsNaN(y) && !double.IsInfinity(y))
                     {
                         if (y < minY) minY = y;
                         if (y > maxY) maxY = y;
                     }
 
-                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
@@ -284,27 +278,22 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем последний сегмент
             if (currentSegment.Count > 1)
             {
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Корректируем minY и maxY
             if (minY == double.MaxValue) minY = -10;
             if (maxY == double.MinValue) maxY = 10;
 
-            // Добавляем отступ
             double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
             minY -= yPadding;
             maxY += yPadding;
 
-            // Расширяем границы по x
             double xPadding = Math.Abs(b - a) * 0.1;
             double visibleA = a - xPadding;
             double visibleB = b + xPadding;
 
-            // Добавляем ось Y (x = 0) если она видима
             if (visibleA <= 0 && visibleB >= 0)
             {
                 LineSeries yAxisSeries = new LineSeries
@@ -329,7 +318,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(yAxisAnnotation);
             }
 
-            // Добавляем ось X (y = 0) если она видима
             if (minY <= 0 && maxY >= 0)
             {
                 LineSeries xAxisSeries = new LineSeries
@@ -354,7 +342,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(xAxisAnnotation);
             }
 
-            // Добавляем координатную сетку
             PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
             PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[0].MajorGridlineThickness = 0.5;
@@ -363,7 +350,6 @@ namespace WpfApp1
             PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[1].MajorGridlineThickness = 0.5;
 
-            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
@@ -383,7 +369,6 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем касательные
             if (_tangentLines.Any())
             {
                 foreach (var tangent in _tangentLines)
@@ -392,13 +377,12 @@ namespace WpfApp1
                     {
                         LineSeries tangentSeries = new LineSeries
                         {
-                            Color = OxyColor.FromRgb(0xFF, 0x8C, 0x00), // Оранжевый
+                            Color = OxyColor.FromRgb(0xFF, 0x8C, 0x00), 
                             StrokeThickness = 1.5,
                             LineStyle = LineStyle.Dash,
                             Title = "Касательная"
                         };
 
-                        // Рисуем касательную в пределах видимой области
                         double tangentY1 = tangent.GetY(visibleA);
                         double tangentY2 = tangent.GetY(visibleB);
 
@@ -407,7 +391,6 @@ namespace WpfApp1
 
                         PlotModel.Series.Add(tangentSeries);
 
-                        // Добавляем точку касания
                         ScatterSeries tangentPointSeries = new ScatterSeries
                         {
                             MarkerType = MarkerType.Circle,
@@ -422,7 +405,6 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем точку минимума
             if (result.IsMinimum)
             {
                 ScatterSeries minimumSeries = new ScatterSeries
@@ -437,7 +419,6 @@ namespace WpfApp1
                 minimumSeries.Points.Add(new ScatterPoint(result.MinimumPoint, result.MinimumValue));
                 PlotModel.Series.Add(minimumSeries);
 
-                // Добавляем подпись
                 int decimalPlaces = GetDecimalPlacesFromEpsilon(double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture));
                 var minimumAnnotation = new TextAnnotation
                 {
@@ -450,7 +431,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(minimumAnnotation);
             }
 
-            // Добавляем точки итераций
             ScatterSeries iterationsSeries = new ScatterSeries
             {
                 Title = "Итерации",
@@ -468,7 +448,6 @@ namespace WpfApp1
 
             PlotModel.Series.Add(iterationsSeries);
 
-            // Добавляем точку пересечения осей (0,0) если видима
             if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
                 ScatterSeries originSeries = new ScatterSeries
@@ -493,7 +472,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(originAnnotation);
             }
 
-            // Обновляем границы осей
             PlotModel.Axes[0].Minimum = visibleA;
             PlotModel.Axes[0].Maximum = visibleB;
             PlotModel.Axes[1].Minimum = minY;
@@ -589,7 +567,6 @@ namespace WpfApp1
 
             var iteration = _stepByStepIterations[_currentStepIndex];
 
-            // Очищаем предыдущие точки итераций и касательные
             var seriesToRemove = PlotModel.Series.Where(s =>
                 s.Title == "Текущая итерация" ||
                 s.Title == "Касательная" ||
@@ -600,7 +577,6 @@ namespace WpfApp1
                 PlotModel.Series.Remove(series);
             }
 
-            // Добавляем текущую точку итерации
             var iterationSeries = new ScatterSeries
             {
                 Title = "Текущая итерация",
@@ -613,7 +589,6 @@ namespace WpfApp1
             iterationSeries.Points.Add(new ScatterPoint(iteration.X, iteration.FunctionValue));
             PlotModel.Series.Add(iterationSeries);
 
-            // Добавляем касательную для текущего шага
             if (iteration.TangentLine != null)
             {
                 double a = double.Parse(txtA.Text.Replace(",", "."), CultureInfo.InvariantCulture);
@@ -637,7 +612,6 @@ namespace WpfApp1
                 tangentSeries.Points.Add(new DataPoint(visibleB, tangentY2));
                 PlotModel.Series.Add(tangentSeries);
 
-                // Добавляем точку касания
                 ScatterSeries tangentPointSeries = new ScatterSeries
                 {
                     Title = "Точка касания",
@@ -698,7 +672,6 @@ namespace WpfApp1
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
 
@@ -709,7 +682,6 @@ namespace WpfApp1
                 {
                     double y = _newtonMethod.CalculateFunction(x);
 
-                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
@@ -739,13 +711,11 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем последний сегмент
             if (currentSegment.Count > 1)
             {
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Добавляем все сегменты на график
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
@@ -880,10 +850,8 @@ namespace WpfApp1
 
             string result = function.Trim();
 
-            // Заменяем запятые на точки в десятичных числах
             result = Regex.Replace(result, @"(\d),(\d)", "$1.$2");
 
-            // Заменяем оператор ^ на pow()
             result = ConvertPowerOperator(result);
 
             return result;

@@ -25,7 +25,6 @@ namespace WpfApp1
         {
             InitializeComponent();
 
-            // Инициализация модели графика
             PlotModel = new PlotModel
             {
                 Title = "График функции и поиск корня",
@@ -34,7 +33,6 @@ namespace WpfApp1
                 PlotAreaBorderColor = OxyColor.FromRgb(0x2C, 0x5F, 0x9E)
             };
 
-            // Настройка осей
             PlotModel.Axes.Add(new LinearAxis
             {
                 Position = AxisPosition.Bottom,
@@ -64,7 +62,6 @@ namespace WpfApp1
             _stepByStepIterations = new List<BisectionIteration>();
             _currentStepIndex = -1;
 
-            // Сбрасываем текстовые поля результата при инициализации
             ResetResultFields();
 
             DataContext = this;
@@ -105,7 +102,6 @@ namespace WpfApp1
 
                 _dihotomyMethod = new DihotomyMethod(function);
 
-                // Проверка функции на интервале
                 bool functionValid = _dihotomyMethod.TestFunctionOnInterval(a, b);
                 if (!functionValid)
                 {
@@ -121,12 +117,10 @@ namespace WpfApp1
                 }
                 catch (InvalidOperationException ex) when (ex.Message.Contains("одинаковый знак"))
                 {
-                    // Обработка случая с одинаковыми знаками
                     lblResult.Text = "Корень не найден";
-                    lblXValue.Text = "x = -";
-                    lblFXValue.Text = "f(x) = -";
+                    lblXValue.Text = "-";
+                    lblFXValue.Text = "-";
 
-                    // Показываем график даже если корней нет
                     PlotGraphWithRoots(a, b, new List<double>(), _dihotomyMethod);
 
                     _calculationPerformed = true;
@@ -141,8 +135,8 @@ namespace WpfApp1
                 catch (ArgumentException ex) when (ex.Message.Contains("нет смены знака"))
                 {
                     lblResult.Text = "Корень не найден";
-                    lblXValue.Text = "x = -";
-                    lblFXValue.Text = "f(x) = -";
+                    lblXValue.Text = "-";
+                    lblFXValue.Text = " -";
 
                     PlotGraphWithRoots(a, b, new List<double>(), _dihotomyMethod);
 
@@ -155,15 +149,13 @@ namespace WpfApp1
                     return;
                 }
 
-                // Определяем количество знаков после запятой для вывода
                 int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                // Обновляем текстовые поля с результатами
                 lblResult.Text = "Корень найден!";
-                lblXValue.Text = $"x = {root.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}";
+                lblXValue.Text = $"{root.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}";
 
                 double fRoot = _dihotomyMethod.CalculateFunction(root);
-                lblFXValue.Text = $"f(x) = {fRoot.ToString($"E2", CultureInfo.InvariantCulture)}";
+                lblFXValue.Text = $"{fRoot.ToString($"E2", CultureInfo.InvariantCulture)}";
 
                 MessageBox.Show($"Найден корень уравнения f(x) = 0\n\n" +
                               $"Корень: x = {root.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
@@ -193,11 +185,9 @@ namespace WpfApp1
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Создаем сегменты для обработки разрывов
             List<List<OxyPlot.DataPoint>> segments = new List<List<OxyPlot.DataPoint>>();
             List<OxyPlot.DataPoint> currentSegment = new List<OxyPlot.DataPoint>();
 
-            // Найдем диапазон значений y для корректного отображения осей
             double minY = double.MaxValue;
             double maxY = double.MinValue;
 
@@ -208,14 +198,12 @@ namespace WpfApp1
                 {
                     double y = method.CalculateFunction(x);
 
-                    // Обновляем minY и maxY
                     if (!double.IsNaN(y) && !double.IsInfinity(y))
                     {
                         if (y < minY) minY = y;
                         if (y > maxY) maxY = y;
                     }
 
-                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
@@ -245,33 +233,27 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем последний сегмент
             if (currentSegment.Count > 1)
             {
                 segments.Add(new List<OxyPlot.DataPoint>(currentSegment));
             }
 
-            // Корректируем minY и maxY если они не были найдены
             if (minY == double.MaxValue) minY = -10;
             if (maxY == double.MinValue) maxY = 10;
 
-            // Добавляем немного отступа сверху и снизу
             double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
             minY -= yPadding;
             maxY += yPadding;
 
-            // **Добавляем ось Y (x = 0) если она в пределах видимой области**
-            // Расширяем границы по x для лучшего отображения
             double xPadding = Math.Abs(b - a) * 0.1;
             double visibleA = a - xPadding;
             double visibleB = b + xPadding;
 
             if (visibleA <= 0 && visibleB >= 0)
             {
-                // Ось Y проходит через x=0 от minY до maxY
                 LineSeries yAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось Y (x = 0)"
@@ -281,7 +263,6 @@ namespace WpfApp1
                 yAxisSeries.Points.Add(new OxyPlot.DataPoint(0, maxY));
                 PlotModel.Series.Add(yAxisSeries);
 
-                // Подпись оси Y
                 var yAxisAnnotation = new OxyPlot.Annotations.TextAnnotation
                 {
                     Text = "y",
@@ -292,13 +273,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(yAxisAnnotation);
             }
 
-            // **Добавляем ось X (y = 0) если она в пределах видимой области**
             if (minY <= 0 && maxY >= 0)
             {
-                // Ось X проходит через y=0 от visibleA до visibleB
                 LineSeries xAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось X (y = 0)"
@@ -308,7 +287,6 @@ namespace WpfApp1
                 xAxisSeries.Points.Add(new OxyPlot.DataPoint(visibleB, 0));
                 PlotModel.Series.Add(xAxisSeries);
 
-                // Подпись оси X
                 var xAxisAnnotation = new OxyPlot.Annotations.TextAnnotation
                 {
                     Text = "x",
@@ -319,7 +297,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(xAxisAnnotation);
             }
 
-            // Добавляем координатную сетку
             PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
             PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[0].MajorGridlineThickness = 0.5;
@@ -328,7 +305,6 @@ namespace WpfApp1
             PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[1].MajorGridlineThickness = 0.5;
 
-            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
@@ -348,7 +324,6 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем найденные корни
             if (roots.Any())
             {
                 ScatterSeries rootsSeries = new ScatterSeries
@@ -356,7 +331,7 @@ namespace WpfApp1
                     Title = "Найденный корень",
                     MarkerType = MarkerType.Circle,
                     MarkerSize = 10,
-                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                     MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                     MarkerStrokeThickness = 2
                 };
@@ -368,12 +343,11 @@ namespace WpfApp1
                         double y = method.CalculateFunction(root);
                         rootsSeries.Points.Add(new ScatterPoint(root, y));
 
-                        // Добавляем вертикальную пунктирную линию от корня до оси X
                         if (minY <= 0 && maxY >= 0)
                         {
                             LineSeries rootToXAxisSeries = new LineSeries
                             {
-                                Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                                Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                                 StrokeThickness = 1,
                                 LineStyle = LineStyle.Dash,
                                 Title = null
@@ -383,12 +357,11 @@ namespace WpfApp1
                             PlotModel.Series.Add(rootToXAxisSeries);
                         }
 
-                        // Добавляем горизонтальную пунктирную линию от корня до оси Y
                         if (visibleA <= 0 && visibleB >= 0)
                         {
                             LineSeries rootToYAxisSeries = new LineSeries
                             {
-                                Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                                Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                                 StrokeThickness = 1,
                                 LineStyle = LineStyle.Dash,
                                 Title = null
@@ -398,11 +371,9 @@ namespace WpfApp1
                             PlotModel.Series.Add(rootToYAxisSeries);
                         }
 
-                        // Определяем точность для отображения
                         double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                         int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                        // Добавляем подпись с координатами корня
                         var rootAnnotation = new OxyPlot.Annotations.TextAnnotation
                         {
                             Text = $"({root.ToString($"F{decimalPlaces}")}, {y.ToString($"F{decimalPlaces}")})",
@@ -422,7 +393,6 @@ namespace WpfApp1
                 PlotModel.Series.Add(rootsSeries);
             }
 
-            // Добавляем точку пересечения осей (0,0) если она видима
             if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
                 ScatterSeries originSeries = new ScatterSeries
@@ -447,13 +417,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(originAnnotation);
             }
 
-            // Обновляем границы осей для лучшего отображения
             PlotModel.Axes[0].Minimum = visibleA;
             PlotModel.Axes[0].Maximum = visibleB;
             PlotModel.Axes[1].Minimum = minY;
             PlotModel.Axes[1].Maximum = maxY;
 
-            // Добавляем информацию о знаках на концах интервала
             try
             {
                 double fa = method.CalculateFunction(a);
@@ -538,11 +506,10 @@ namespace WpfApp1
             txtEpsilon.Text = "0,001";
             txtFunction.Text = "x^3 - 2*x^2 + x - 5";
 
-            // Сбрасываем результаты на значения по умолчанию
             ResetResultFields();
 
             PlotModel.Series.Clear();
-            PlotModel.Annotations.Clear(); // Очищаем аннотации
+            PlotModel.Annotations.Clear(); 
             PlotModel.InvalidatePlot(true);
 
             _stepByStepIterations.Clear();
@@ -570,10 +537,8 @@ namespace WpfApp1
 
             string result = function.Trim();
 
-            // Заменяем запятые на точки в десятичных числах
             result = Regex.Replace(result, @"(\d),(\d)", "$1.$2");
 
-            // Заменяем оператор ^ на pow() для NCalc
             result = ConvertPowerOperator(result);
 
             return result;
@@ -581,15 +546,11 @@ namespace WpfApp1
 
         private string ConvertPowerOperator(string expression)
         {
-            // Преобразует x^2 в pow(x,2)
-            // Учитывает скобки, числа и переменные
-
             string result = expression;
-            int maxIterations = 10; // защита от бесконечного цикла
+            int maxIterations = 10; 
 
             for (int i = 0; i < maxIterations; i++)
             {
-                // Ищем шаблон: число или переменная, затем ^, затем число или выражение
                 Match match = Regex.Match(result, @"([a-zA-Z0-9\.]+|\([^)]+\))\s*\^\s*([a-zA-Z0-9\.]+|\([^)]+\))");
 
                 if (!match.Success)
@@ -598,7 +559,6 @@ namespace WpfApp1
                 string left = match.Groups[1].Value;
                 string right = match.Groups[2].Value;
 
-                // Убираем лишние скобки если они есть
                 if (left.StartsWith("(") && left.EndsWith(")"))
                     left = left.Substring(1, left.Length - 2);
                 if (right.StartsWith("(") && right.EndsWith(")"))
@@ -676,7 +636,6 @@ namespace WpfApp1
 
         private void UpdateStepControls()
         {
-            // Реализация для пошагового режима (если потребуется)
         }
 
         private void ResetResultFields()
@@ -688,7 +647,6 @@ namespace WpfApp1
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // При загрузке окна убедимся, что поля результата пустые
             if (!_calculationPerformed)
             {
                 ResetResultFields();
@@ -696,7 +654,6 @@ namespace WpfApp1
         }
     }
 
-    // Класс для хранения информации о итерациях (для будущего расширения)
     public class BisectionIteration
     {
         public int Iteration { get; set; }

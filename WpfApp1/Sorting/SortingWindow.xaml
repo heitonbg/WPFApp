@@ -4,265 +4,395 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Олимпиадные сортировки" 
-        Height="750" 
-        Width="1200"
+        Title="Олимпиадные сортировки"
+        Height="900"
+        Width="1600"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized">
+        WindowState="Maximized"
+        MinHeight="900" MinWidth="1600">
 
-    <Window.Resources>
-        <!-- Стиль для кнопок -->
-        <Style x:Key="ModernButton" TargetType="Button">
-            <Setter Property="Background" Value="#2C5F9E"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
+	<Window.Resources>
+		<!-- Стиль для Menu -->
+		<Style x:Key="MainMenuStyle" TargetType="Menu">
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="Height" Value="30"/>
+		</Style>
+
+		<!-- Стиль для MenuItem  -->
+		<Style x:Key="MenuItemStyle" TargetType="MenuItem">
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="Padding" Value="15,5"/>
+			<Setter Property="HorizontalContentAlignment" Value="Left"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Style.Triggers>
+				<Trigger Property="IsMouseOver" Value="True">
+					<Setter Property="Background" Value="#3A6DB0"/>
+				</Trigger>
+				<Trigger Property="IsSubmenuOpen" Value="True">
+					<Setter Property="Background" Value="#1E4A7A"/>
+				</Trigger>
+			</Style.Triggers>
+		</Style>
+
+		<!-- Стиль для подменю MenuItem -->
+		<Style x:Key="SubMenuItemStyle" TargetType="MenuItem" BasedOn="{StaticResource MenuItemStyle}">
+			<Setter Property="Foreground" Value="#333333"/>
+			<Setter Property="Background" Value="White"/>
+			<Setter Property="Padding" Value="15,8"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="MenuItem">
+						<Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIconColumnGroup"/>
+									<ColumnDefinition Width="*"/>
+								</Grid.ColumnDefinitions>
+								<ContentPresenter x:Name="Icon" ContentSource="Icon" Margin="0,0,10,0"/>
+								<ContentPresenter x:Name="Header" ContentSource="Header"
+                                                  Grid.Column="1"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Margin="{TemplateBinding Padding}"/>
+							</Grid>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="Border" Property="Background" Value="#F0F5FC"/>
+								<Setter Property="Foreground" Value="#2C5F9E"/>
+							</Trigger>
+							<Trigger Property="IsChecked" Value="True">
+								<Setter Property="Foreground" Value="#2C5F9E"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+		<!-- Стиль для Separator в меню -->
+		<Style x:Key="MenuSeparatorStyle" TargetType="Separator">
+			<Setter Property="Background" Value="#E0E0E0"/>
+			<Setter Property="Margin" Value="10,5"/>
+			<Setter Property="Height" Value="1"/>
+		</Style>
+
+		<!-- Стиль для кнопок -->
+		<Style x:Key="ModernButton" TargetType="Button">
+			<Setter Property="Background" Value="#2C5F9E"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Height" Value="38"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Border x:Name="border"
                                 CornerRadius="6"
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter x:Name="contentPresenter" 
+							<ContentPresenter x:Name="contentPresenter"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Margin="12,6"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3A6DB0"/>
-                                <Setter TargetName="border" Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#30000000"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1E4A7A"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#3A6DB0"/>
+								<Setter TargetName="border" Property="Effect">
+									<Setter.Value>
+										<DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#30000000"/>
+									</Setter.Value>
+								</Setter>
+							</Trigger>
+							<Trigger Property="IsPressed" Value="True">
+								<Setter TargetName="border" Property="Background" Value="#1E4A7A"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 
-        <!-- Стиль для GroupBox -->
-        <Style x:Key="ModernGroupBox" TargetType="GroupBox">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="15"/>
-            <Setter Property="Background" Value="#FAFBFD"/>
-            <Setter Property="BorderBrush" Value="#E1E8F2"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="GroupBox">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
+		<!-- Стиль для GroupBox -->
+		<Style x:Key="ModernGroupBox" TargetType="GroupBox">
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Padding" Value="15"/>
+			<Setter Property="Background" Value="#FAFBFD"/>
+			<Setter Property="BorderBrush" Value="#E1E8F2"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="GroupBox">
+						<Grid>
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto"/>
+								<RowDefinition Height="*"/>
+							</Grid.RowDefinitions>
 
-                            <Border Grid.Row="0" 
-                                    Background="{TemplateBinding Background}" 
-                                    CornerRadius="6,6,0,0" 
-                                    BorderThickness="1,1,1,0" 
+							<Border Grid.Row="0"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6,6,0,0"
+                                    BorderThickness="1,1,1,0"
                                     BorderBrush="{TemplateBinding BorderBrush}">
-                                <TextBlock Text="{TemplateBinding Header}" 
-                                           Margin="10,8" 
+								<TextBlock Text="{TemplateBinding Header}"
+                                           Margin="10,8"
                                            Foreground="#2C5F9E"
                                            FontWeight="SemiBold"/>
-                            </Border>
+							</Border>
 
-                            <Border Grid.Row="1" 
-                                    Background="{TemplateBinding Background}" 
-                                    CornerRadius="0,0,6,6" 
-                                    BorderThickness="1,0,1,1" 
+							<Border Grid.Row="1"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="0,0,6,6"
+                                    BorderThickness="1,0,1,1"
                                     BorderBrush="{TemplateBinding BorderBrush}">
-                                <ContentPresenter ContentSource="Content" Margin="10"/>
-                            </Border>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+								<ContentPresenter ContentSource="Content" Margin="10"/>
+							</Border>
+						</Grid>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 
-        <!-- Стиль для текстовых полей -->
-        <Style x:Key="ModernTextBox" TargetType="TextBox">
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#E1E8F2"/>
-            <Setter Property="Background" Value="White"/>
-        </Style>
-    </Window.Resources>
+		<!-- Стиль для текстовых полей -->
+		<Style x:Key="ModernTextBox" TargetType="TextBox">
+			<Setter Property="Height" Value="32"/>
+			<Setter Property="Padding" Value="8,4"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="BorderBrush" Value="#E1E8F2"/>
+			<Setter Property="Background" Value="White"/>
+		</Style>
 
-    <Window.Background>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#f0f5fc" Offset="0.0" />
-            <GradientStop Color="#e8eff8" Offset="0.4" />
-            <GradientStop Color="#dde6f2" Offset="1.0" />
-        </LinearGradientBrush>
-    </Window.Background>
+		<!-- Стиль для CheckBox -->
+		<Style x:Key="ModernCheckBox" TargetType="CheckBox">
+			<Setter Property="Foreground" Value="#333"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="Margin" Value="5"/>
+		</Style>
 
-    <Grid>
-        <!-- Декоративные элементы -->
-        <Ellipse Width="250" Height="250" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-80,-80"/>
-        <Ellipse Width="180" Height="180" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-60,-60"/>
+		<DropShadowEffect x:Key="DropShadowEffect"
+                          BlurRadius="8"
+                          ShadowDepth="0"
+                          Color="#30000000"
+                          Opacity="0.3"/>
+	</Window.Resources>
 
-        <Grid Margin="25">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+	<Grid>
+		<!-- Главный контейнер с Menu наверху -->
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+		</Grid.RowDefinitions>
 
-            <!-- Заголовок -->
-            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,20">
-                <TextBlock Text="ОЛИМПИАДНЫЕ СОРТИРОВКИ" 
-                          FontSize="28" 
-                          FontWeight="Light" 
-                          Foreground="#2C5F9E"/>
-                <TextBlock Text="Сравнение алгоритмов сортировки" 
-                          FontSize="14" 
-                          Foreground="#666" 
-                          Margin="0,5,0,0"/>
-            </StackPanel>
+		<!-- MenuStrip с нормальными цветами -->
+		<Menu Grid.Row="0" Style="{StaticResource MainMenuStyle}"
+			  Background="#2C5F9E"
+			  VerticalAlignment="Top"
+			  HorizontalAlignment="Stretch"
+			  Height="30">
+			<MenuItem Header="Файл" Style="{StaticResource MenuItemStyle}">
+				<MenuItem Header="Загрузить из файла (XLSX)" Click="LoadExcelFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<MenuItem Header="Загрузить из Google Sheets" Click="LoadGoogleSheetsFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<Separator Style="{StaticResource MenuSeparatorStyle}"/>
+				<MenuItem Header="Сохранить результаты" Click="SaveResultsFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<Separator Style="{StaticResource MenuSeparatorStyle}"/>
+				<MenuItem Header="Выход" Click="ExitFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+			</MenuItem>
+			<MenuItem Header="Данные" Style="{StaticResource MenuItemStyle}">
+				<MenuItem Header="Сгенерировать данные" Click="GenerateDataFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<MenuItem Header="Ввести вручную" Click="ManualInputFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<MenuItem Header="Очистить данные" Click="ClearFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+			</MenuItem>
+			<MenuItem Header="Сортировка" Style="{StaticResource MenuItemStyle}">
+				<MenuItem Header="Выполнить сортировку" Click="SortFromMenu_Click" InputGestureText="F5" Style="{StaticResource SubMenuItemStyle}"/>
+				<Separator Style="{StaticResource MenuSeparatorStyle}"/>
+				<MenuItem Header="Выбрать все алгоритмы" Click="SelectAllAlgorithmsFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<MenuItem Header="Снимать все выборы" Click="DeselectAllAlgorithmsFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+			</MenuItem>
+			<MenuItem Header="Вид" Style="{StaticResource MenuItemStyle}">
+				<MenuItem Header="Сбросить визуализацию" Click="ClearVisualizationFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<Separator Style="{StaticResource MenuSeparatorStyle}"/>
+				<MenuItem Header="О программе" Click="AboutFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+				<MenuItem Header="Руководство" Click="HelpFromMenu_Click" Style="{StaticResource SubMenuItemStyle}"/>
+			</MenuItem>
+		</Menu>
 
-            <!-- Основное содержимое -->
-            <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="320"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="320"/>
-                </Grid.ColumnDefinitions>
+		<!-- Основное содержимое -->
+		<Grid Grid.Row="1">
+			<Grid.Background>
+				<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+					<GradientStop Color="#f0f5fc" Offset="0.0" />
+					<GradientStop Color="#e8eff8" Offset="0.4" />
+					<GradientStop Color="#dde6f2" Offset="1.0" />
+				</LinearGradientBrush>
+			</Grid.Background>
 
-                <!-- Левая панель - управление -->
-                <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                    <!-- Генерация данных -->
-                    <GroupBox Header="ГЕНЕРАЦИЯ ДАННЫХ" Style="{StaticResource ModernGroupBox}">
-                        <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="От:" Foreground="#333" Margin="0,0,0,2"/>
-                                    <TextBox x:Name="txtMinValue" Text="1" Style="{StaticResource ModernTextBox}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="До:" Foreground="#333" Margin="0,0,0,2"/>
-                                    <TextBox x:Name="txtMaxValue" Text="100" Style="{StaticResource ModernTextBox}"/>
-                                </StackPanel>
-                            </Grid>
+			<!-- Декоративные элементы -->
+			<Ellipse Width="180" Height="180" Opacity="0.04" Fill="#2C5F9E" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="-60,-60"/>
 
-                            <StackPanel Margin="0,10,0,0">
-                                <TextBlock Text="Количество элементов:" Foreground="#333" Margin="0,0,0,2"/>
-                                <TextBox x:Name="txtElementCount" Text="10" Style="{StaticResource ModernTextBox}"/>
-                            </StackPanel>
+			<Grid Margin="15,10">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition Height="*"/>
+				</Grid.RowDefinitions>
 
-                            <Button Content="Сгенерировать данные" 
-                                    Style="{StaticResource ModernButton}"
-                                    Click="GenerateData_Click"
-                                    Margin="0,10,0,0"/>
-                            <Button Content="Очистить данные" 
-                                    Style="{StaticResource ModernButton}"
-                                    Click="Clear_Click"
-                                    Margin="0,8,0,0"/>
-                        </StackPanel>
-                    </GroupBox>
+				<!-- Заголовок -->
+				<StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,15">
+					<TextBlock Text="ОЛИМПИАДНЫЕ СОРТИРОВКИ"
+                              FontSize="28"
+                              FontWeight="Light"
+                              Foreground="#2C5F9E"/>
+					<TextBlock Text="Сравнение алгоритмов сортировки"
+                              FontSize="14"
+                              Foreground="#666"
+                              Margin="0,5,0,0"/>
+				</StackPanel>
 
-                    <!-- Импорт данных -->
-                    <GroupBox Header="ИМПОРТ ДАННЫХ" Style="{StaticResource ModernGroupBox}" Margin="0,15,0,0">
-                        <StackPanel>
-                            <Button Content="Загрузить из файла (XLSX)" 
-                                    Style="{StaticResource ModernButton}"
-                                    Click="LoadExcel_Click"/>
-                            <Button Content="Ввести вручную" 
-                                    Style="{StaticResource ModernButton}"
-                                    Click="ManualInput_Click"
-                                    Margin="0,8,0,0"/>
-                        </StackPanel>
-                    </GroupBox>
+				<!-- Основное содержимое -->
+				<Grid Grid.Row="1">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="320"/>
+						<ColumnDefinition Width="*"/>
+						<ColumnDefinition Width="320"/>
+					</Grid.ColumnDefinitions>
 
-                    <!-- Алгоритмы сортировки -->
-                    <GroupBox Header="АЛГОРИТМЫ СОРТИРОВКИ" Style="{StaticResource ModernGroupBox}" Margin="0,15,0,0">
-                        <StackPanel>
-                            <CheckBox x:Name="cbBubble" Content="Пузырьковая сортировка" Margin="0,8,0,0" Foreground="#333"/>
-                            <CheckBox x:Name="cbInsertion" Content="Сортировка вставками" Margin="0,8,0,0" Foreground="#333"/>
-                            <CheckBox x:Name="cbShaker" Content="Шейкерная сортировка" Margin="0,8,0,0" Foreground="#333"/>
-                            <CheckBox x:Name="cbQuick" Content="Быстрая сортировка" Margin="0,8,0,0" Foreground="#333"/>
-                            <CheckBox x:Name="cbBogo" Content="BOGO сортировка" Margin="0,8,0,0" Foreground="#333"/>
-                        </StackPanel>
-                    </GroupBox>
+					<!-- Левая панель - управление -->
+					<StackPanel Grid.Column="0" Margin="0,0,10,0">
+						<!-- Генерация данных -->
+						<GroupBox Header="ГЕНЕРАЦИЯ ДАННЫХ" Style="{StaticResource ModernGroupBox}">
+							<StackPanel>
+								<Grid>
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="10"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+									<StackPanel Grid.Column="0">
+										<TextBlock Text="От:" Foreground="#333" Margin="0,0,0,2"/>
+										<TextBox x:Name="txtMinValue" Text="1" Style="{StaticResource ModernTextBox}"/>
+									</StackPanel>
+									<StackPanel Grid.Column="2">
+										<TextBlock Text="До:" Foreground="#333" Margin="0,0,0,2"/>
+										<TextBox x:Name="txtMaxValue" Text="100" Style="{StaticResource ModernTextBox}"/>
+									</StackPanel>
+								</Grid>
 
-                    <!-- Настройки -->
-                    <GroupBox Header="НАСТРОЙКИ" Style="{StaticResource ModernGroupBox}" Margin="0,15,0,0">
-                        <StackPanel>
-                            <TextBlock Text="Порядок сортировки:" Foreground="#333" Margin="0,0,0,5"/>
-                            <ComboBox x:Name="comboOrder" Height="32" SelectedIndex="0">
-                                <ComboBoxItem Content="По возрастанию ↗"/>
-                                <ComboBoxItem Content="По убыванию ↘"/>
-                            </ComboBox>
+								<StackPanel Margin="0,10,0,0">
+									<TextBlock Text="Количество элементов:" Foreground="#333" Margin="0,0,0,2"/>
+									<TextBox x:Name="txtElementCount" Text="10" Style="{StaticResource ModernTextBox}"/>
+								</StackPanel>
 
-                            <!-- Максимальное количество итераций для Bogo -->
-                            <StackPanel Margin="0,10,0,0">
-                                <TextBlock Text="Макс. итераций для Bogo:" Foreground="#333" Margin="0,0,0,2"/>
-                                <TextBox x:Name="txtMaxBogoIterations" Text="10000" Style="{StaticResource ModernTextBox}"/>
-                                <TextBlock Text="(0 = без ограничений)" FontSize="10" Foreground="#666" Margin="0,2,0,0"/>
-                            </StackPanel>
+								<Button Content="Сгенерировать данные"
+                                        Style="{StaticResource ModernButton}"
+                                        Click="GenerateData_Click"
+                                        Margin="0,10,0,0"/>
+								<Button Content="Очистить данные"
+                                        Style="{StaticResource ModernButton}"
+                                        Click="Clear_Click"
+                                        Margin="0,8,0,0"/>
+							</StackPanel>
+						</GroupBox>
 
-                            <Button Content="ВЫПОЛНИТЬ СОРТИРОВКУ" 
-                                    Style="{StaticResource ModernButton}"
-                                    Background="#27AE60"
-                                    Click="Sort_Click"
-                                    Margin="0,15,0,0"/>
-                        </StackPanel>
-                    </GroupBox>
-                </StackPanel>
+						<!-- Импорт данных -->
+						<GroupBox Header="ИМПОРТ ДАННЫХ" Style="{StaticResource ModernGroupBox}" Margin="0,10,0,0">
+							<StackPanel>
+								<Button Content="Загрузить из файла (XLSX)"
+                                        Style="{StaticResource ModernButton}"
+                                        Click="LoadExcel_Click"/>
+								<Button Content="Ввести вручную"
+                                        Style="{StaticResource ModernButton}"
+                                        Click="ManualInput_Click"
+                                        Margin="0,8,0,0"/>
+								<Button Content="Загрузить из Google Sheets"
+                                        Style="{StaticResource ModernButton}"
+                                        Click="LoadGoogleSheets_Click"
+                                        Margin="0,8,0,0"/>
+							</StackPanel>
+						</GroupBox>
 
-                <!-- Центральная панель - данные и визуализация -->
-                <Grid Grid.Column="1" Margin="15,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="200"/>
-                    </Grid.RowDefinitions>
+						<!-- Алгоритмы сортировки -->
+						<GroupBox Header="АЛГОРИТМЫ СОРТИРОВКИ" Style="{StaticResource ModernGroupBox}" Margin="0,10,0,0">
+							<StackPanel>
+								<CheckBox x:Name="cbBubble" Content="Пузырьковая сортировка" Margin="0,8,0,0" Style="{StaticResource ModernCheckBox}"/>
+								<CheckBox x:Name="cbInsertion" Content="Сортировка вставками" Margin="0,8,0,0" Style="{StaticResource ModernCheckBox}"/>
+								<CheckBox x:Name="cbShaker" Content="Шейкерная сортировка" Margin="0,8,0,0" Style="{StaticResource ModernCheckBox}"/>
+								<CheckBox x:Name="cbQuick" Content="Быстрая сортировка" Margin="0,8,0,0" Style="{StaticResource ModernCheckBox}"/>
+								<CheckBox x:Name="cbBogo" Content="BOGO сортировка" Margin="0,8,0,0" Style="{StaticResource ModernCheckBox}"/>
+							</StackPanel>
+						</GroupBox>
 
-                    <!-- Входные данные -->
-                    <GroupBox Header="ВХОДНЫЕ ДАННЫЕ" Style="{StaticResource ModernGroupBox}">
-                        <DataGrid x:Name="dataGrid" 
-                                  Height="350"
-                                  Background="White"
-                                  BorderThickness="1"
-                                  BorderBrush="#E1E8F2"
-                                  AutoGenerateColumns="True"
-                                  CanUserAddRows="True"
-                                  CanUserDeleteRows="True"
-                                  BeginningEdit="DataGrid_BeginningEdit"/>
-                    </GroupBox>
+						<!-- Настройки -->
+						<GroupBox Header="НАСТРОЙКИ" Style="{StaticResource ModernGroupBox}" Margin="0,10,0,0">
+							<StackPanel>
+								<TextBlock Text="Порядок сортировки:" Foreground="#333" Margin="0,0,0,5"/>
+								<ComboBox x:Name="comboOrder" Height="32" SelectedIndex="0">
+									<ComboBoxItem Content="По возрастанию ↗"/>
+									<ComboBoxItem Content="По убыванию ↘"/>
+								</ComboBox>
 
-                    <!-- Визуализация -->
-                    <GroupBox Header="ВИЗУАЛИЗАЦИЯ РЕЗУЛЬТАТОВ" Style="{StaticResource ModernGroupBox}" Grid.Row="1" Margin="0,15,0,0">
-                        <Canvas x:Name="visualizationCanvas" Background="White"/>
-                    </GroupBox>
-                </Grid>
+								<!-- Максимальное количество итераций для Bogo -->
+								<StackPanel Margin="0,10,0,0">
+									<TextBlock Text="Макс. итераций для Bogo:" Foreground="#333" Margin="0,0,0,2"/>
+									<TextBox x:Name="txtMaxBogoIterations" Text="10000" Style="{StaticResource ModernTextBox}"/>
+									<TextBlock Text="(0 = без ограничений)" FontSize="10" Foreground="#666" Margin="0,2,0,0"/>
+								</StackPanel>
 
-                <!-- Правая панель - результаты -->
-                <StackPanel Grid.Column="2" Margin="15,0,0,0">
-                    <GroupBox Header="РЕЗУЛЬТАТЫ" Style="{StaticResource ModernGroupBox}">
-                        <TextBox x:Name="txtResults" 
-                                 IsReadOnly="True" 
-                                 VerticalScrollBarVisibility="Auto"
-                                 Background="White"
-                                 BorderThickness="0"
-                                 FontFamily="Consolas"
-                                 Height="380"
-                                 TextWrapping="Wrap"/>
-                    </GroupBox>
-                </StackPanel>
-            </Grid>
-        </Grid>
-    </Grid>
+								<Button Content="ВЫПОЛНИТЬ СОРТИРОВКУ"
+                                        Style="{StaticResource ModernButton}"
+                                        Background="#27AE60"
+                                        Click="Sort_Click"
+                                        Margin="0,15,0,0"/>
+							</StackPanel>
+						</GroupBox>
+					</StackPanel>
+
+					<!-- Центральная панель - данные и визуализация -->
+					<Grid Grid.Column="1" Margin="10,0">
+						<Grid.RowDefinitions>
+							<RowDefinition Height="*"/>
+							<RowDefinition Height="200"/>
+						</Grid.RowDefinitions>
+
+						<!-- Входные данные -->
+						<GroupBox Header="ВХОДНЫЕ ДАННЫЕ" Style="{StaticResource ModernGroupBox}">
+							<DataGrid x:Name="dataGrid"
+                                      Height="350"
+                                      Background="White"
+                                      BorderThickness="1"
+                                      BorderBrush="#E1E8F2"
+                                      AutoGenerateColumns="True"
+                                      CanUserAddRows="True"
+                                      CanUserDeleteRows="True"
+                                      BeginningEdit="DataGrid_BeginningEdit"/>
+						</GroupBox>
+
+						<!-- Визуализация -->
+						<GroupBox Header="ВИЗУАЛИЗАЦИЯ РЕЗУЛЬТАТОВ" Style="{StaticResource ModernGroupBox}" Grid.Row="1" Margin="0,10,0,0">
+							<Canvas x:Name="visualizationCanvas" Background="White"/>
+						</GroupBox>
+					</Grid>
+
+					<!-- Правая панель - результаты -->
+					<StackPanel Grid.Column="2" Margin="10,0,0,0">
+						<GroupBox Header="РЕЗУЛЬТАТЫ" Style="{StaticResource ModernGroupBox}">
+							<TextBox x:Name="txtResults"
+                                     IsReadOnly="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Background="White"
+                                     BorderThickness="0"
+                                     FontFamily="Consolas"
+                                     Height="380"
+                                     TextWrapping="Wrap"/>
+						</GroupBox>
+					</StackPanel>
+				</Grid>
+			</Grid>
+		</Grid>
+	</Grid>
 </Window>

@@ -27,7 +27,6 @@ namespace WpfApp1
         {
             InitializeComponent();
 
-            // Инициализация модели графика
             PlotModel = new PlotModel
             {
                 Title = "График функции и поиск экстремума",
@@ -37,7 +36,6 @@ namespace WpfApp1
                 Background = OxyColors.White
             };
 
-            // Настройка осей
             PlotModel.Axes.Add(new LinearAxis
             {
                 Position = AxisPosition.Bottom,
@@ -88,10 +86,8 @@ namespace WpfApp1
                 string function = txtFunction.Text;
                 _findMinimum = cmbExtremumType.SelectedIndex == 0;
 
-                // Предобработка функции
                 function = PreprocessFunction(function);
 
-                // Автоматическая корректировка для логарифмов
                 if (function.ToLower().Contains("log") || function.ToLower().Contains("log10"))
                 {
                     if (a <= 0)
@@ -104,10 +100,8 @@ namespace WpfApp1
                     }
                 }
 
-                // Создаем метод
                 GoldenRatioMethod method = new GoldenRatioMethod(function);
 
-                // Проверка функции на интервале
                 bool functionValid = method.TestFunctionOnInterval(a, b);
                 if (!functionValid)
                 {
@@ -116,14 +110,11 @@ namespace WpfApp1
                     return;
                 }
 
-                // Ищем экстремум
                 GoldenRatioResult result = method.FindGlobalExtremum(a, b, epsilon, _findMinimum);
 
-                // Определяем количество знаков после запятой как в методе дихотомии
                 int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
                 string extremumType = _findMinimum ? "минимума" : "максимума";
 
-                // Формируем результат в одном TextBlock
                 lblResult.Text = $"Точка {extremumType} найдена!\n" +
                                $"x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
                                $"f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
@@ -131,7 +122,6 @@ namespace WpfApp1
                                $"Финальный интервал: [{result.FinalInterval.a.ToString($"F{decimalPlaces}")}, " +
                                $"{result.FinalInterval.b.ToString($"F{decimalPlaces}")}]";
 
-                // Для корня очищаем второе поле
                 lblRootResult.Text = "";
 
                 MessageBox.Show($"Найден {extremumType} функции f(x)\n\n" +
@@ -142,7 +132,6 @@ namespace WpfApp1
                               $"Ответ выводится с точностью до {decimalPlaces} знаков после запятой",
                               $"Результат поиска {extremumType}", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Строим график
                 PlotGraphWithExtremum(a, b, result, method);
 
                 _calculationPerformed = true;
@@ -155,7 +144,6 @@ namespace WpfApp1
 
         private int CalculateDecimalPlaces(double epsilon)
         {
-            // Используем тот же подход, что и в методе дихотомии
             return PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
         }
 
@@ -175,7 +163,6 @@ namespace WpfApp1
 
                 function = PreprocessFunction(function);
 
-                // Автоматическая корректировка для логарифмов
                 if (function.ToLower().Contains("log") || function.ToLower().Contains("log10"))
                 {
                     if (a <= 0)
@@ -190,7 +177,6 @@ namespace WpfApp1
 
                 GoldenRatioMethod method = new GoldenRatioMethod(function);
 
-                // Проверка функции на интервале
                 bool functionValid = method.TestFunctionOnInterval(a, b);
                 if (!functionValid)
                 {
@@ -203,10 +189,8 @@ namespace WpfApp1
                 {
                     GoldenRatioResult result = method.FindRoot(a, b, epsilon);
 
-                    // Определяем количество знаков после запятой
                     int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                    // Формируем результат в основном TextBlock
                     lblResult.Text = $"Корень уравнения f(x) = 0 найден!\n" +
                                    $"x = {result.ExtremumPoint.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
                                    $"f(x) = {result.ExtremumValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)}\n" +
@@ -214,7 +198,6 @@ namespace WpfApp1
                                    $"Финальный интервал: [{result.FinalInterval.a.ToString($"F{decimalPlaces}")}, " +
                                    $"{result.FinalInterval.b.ToString($"F{decimalPlaces}")}]";
 
-                    // Для экстремума очищаем второе поле
                     lblRootResult.Text = "";
 
                     MessageBox.Show($"Найден корень уравнения f(x) = 0\n\n" +
@@ -269,11 +252,9 @@ namespace WpfApp1
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
 
-            // Найдем диапазон значений y для корректного отображения осей
             double minY = double.MaxValue;
             double maxY = double.MinValue;
 
@@ -284,14 +265,12 @@ namespace WpfApp1
                 {
                     double y = method.CalculateFunction(x);
 
-                    // Обновляем minY и maxY
                     if (!double.IsNaN(y) && !double.IsInfinity(y))
                     {
                         if (y < minY) minY = y;
                         if (y > maxY) maxY = y;
                     }
 
-                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
@@ -321,33 +300,28 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем последний сегмент
             if (currentSegment.Count > 1)
             {
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Корректируем minY и maxY если они не были найдены
             if (minY == double.MaxValue) minY = -10;
             if (maxY == double.MinValue) maxY = 10;
 
-            // Добавляем немного отступа сверху и снизу
             double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
             minY -= yPadding;
             maxY += yPadding;
 
-            // Расширяем границы по x для лучшего отображения
             double xPadding = Math.Abs(b - a) * 0.1;
             double visibleA = a - xPadding;
             double visibleB = b + xPadding;
 
-            // **Добавляем ось Y (x = 0) если она в пределах видимой области**
             if (visibleA <= 0 && visibleB >= 0)
             {
-                // Ось Y проходит через x=0 от minY до maxY
+
                 LineSeries yAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось Y (x = 0)"
@@ -357,7 +331,6 @@ namespace WpfApp1
                 yAxisSeries.Points.Add(new DataPoint(0, maxY));
                 PlotModel.Series.Add(yAxisSeries);
 
-                // Подпись оси Y
                 var yAxisAnnotation = new TextAnnotation
                 {
                     Text = "y",
@@ -368,13 +341,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(yAxisAnnotation);
             }
 
-            // **Добавляем ось X (y = 0) если она в пределах видимой области**
             if (minY <= 0 && maxY >= 0)
             {
-                // Ось X проходит через y=0 от visibleA до visibleB
                 LineSeries xAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось X (y = 0)"
@@ -384,7 +355,6 @@ namespace WpfApp1
                 xAxisSeries.Points.Add(new DataPoint(visibleB, 0));
                 PlotModel.Series.Add(xAxisSeries);
 
-                // Подпись оси X
                 var xAxisAnnotation = new TextAnnotation
                 {
                     Text = "x",
@@ -395,7 +365,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(xAxisAnnotation);
             }
 
-            // Добавляем координатную сетку
             PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
             PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[0].MajorGridlineThickness = 0.5;
@@ -404,7 +373,6 @@ namespace WpfApp1
             PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[1].MajorGridlineThickness = 0.5;
 
-            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
@@ -424,7 +392,6 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем найденный экстремум
             if (result != null)
             {
                 ScatterSeries extremumSeries = new ScatterSeries
@@ -432,19 +399,18 @@ namespace WpfApp1
                     Title = _findMinimum ? "Минимум" : "Максимум",
                     MarkerType = MarkerType.Circle,
                     MarkerSize = 10,
-                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                    MarkerFill = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                     MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                     MarkerStrokeThickness = 2
                 };
 
                 extremumSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
 
-                // Добавляем вертикальную пунктирную линию от экстремума до оси X
                 if (minY <= 0 && maxY >= 0)
                 {
                     LineSeries extremumToXAxisSeries = new LineSeries
                     {
-                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                         StrokeThickness = 1,
                         LineStyle = LineStyle.Dash,
                         Title = null
@@ -454,12 +420,11 @@ namespace WpfApp1
                     PlotModel.Series.Add(extremumToXAxisSeries);
                 }
 
-                // Добавляем горизонтальную пунктирную линию от экстремума до оси Y
                 if (visibleA <= 0 && visibleB >= 0)
                 {
                     LineSeries extremumToYAxisSeries = new LineSeries
                     {
-                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), // Красный
+                        Color = OxyColor.FromRgb(0xFF, 0x6B, 0x8E), 
                         StrokeThickness = 1,
                         LineStyle = LineStyle.Dash,
                         Title = null
@@ -469,11 +434,9 @@ namespace WpfApp1
                     PlotModel.Series.Add(extremumToYAxisSeries);
                 }
 
-                // Определяем точность для отображения
                 double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                // Добавляем подпись с координатами экстремума
                 var extremumAnnotation = new TextAnnotation
                 {
                     Text = $"({result.ExtremumPoint.ToString($"F{decimalPlaces}")}, {result.ExtremumValue.ToString($"F{decimalPlaces}")})",
@@ -487,7 +450,6 @@ namespace WpfApp1
                 PlotModel.Series.Add(extremumSeries);
             }
 
-            // Добавляем точку пересечения осей (0,0) если она видима
             if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
                 ScatterSeries originSeries = new ScatterSeries
@@ -512,13 +474,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(originAnnotation);
             }
 
-            // Обновляем границы осей для лучшего отображения
             PlotModel.Axes[0].Minimum = visibleA;
             PlotModel.Axes[0].Maximum = visibleB;
             PlotModel.Axes[1].Minimum = minY;
             PlotModel.Axes[1].Maximum = maxY;
 
-            // Добавляем информацию о значениях на концах интервала
             try
             {
                 double fa = method.CalculateFunction(a);
@@ -546,11 +506,9 @@ namespace WpfApp1
             int pointsCount = 1000;
             double step = (b - a) / pointsCount;
 
-            // Создаем сегменты для обработки разрывов
             List<List<DataPoint>> segments = new List<List<DataPoint>>();
             List<DataPoint> currentSegment = new List<DataPoint>();
 
-            // Найдем диапазон значений y для корректного отображения осей
             double minY = double.MaxValue;
             double maxY = double.MinValue;
 
@@ -561,14 +519,12 @@ namespace WpfApp1
                 {
                     double y = method.CalculateFunction(x);
 
-                    // Обновляем minY и maxY
                     if (!double.IsNaN(y) && !double.IsInfinity(y))
                     {
                         if (y < minY) minY = y;
                         if (y > maxY) maxY = y;
                     }
 
-                    // Проверяем на разрыв
                     if (currentSegment.Count > 0)
                     {
                         double lastY = currentSegment.Last().Y;
@@ -598,33 +554,27 @@ namespace WpfApp1
                 }
             }
 
-            // Добавляем последний сегмент
             if (currentSegment.Count > 1)
             {
                 segments.Add(new List<DataPoint>(currentSegment));
             }
 
-            // Корректируем minY и maxY если они не были найдены
             if (minY == double.MaxValue) minY = -10;
             if (maxY == double.MinValue) maxY = 10;
 
-            // Добавляем немного отступа сверху и снизу
             double yPadding = Math.Max(Math.Abs(maxY - minY) * 0.1, 1.0);
             minY -= yPadding;
             maxY += yPadding;
 
-            // Расширяем границы по x для лучшего отображения
             double xPadding = Math.Abs(b - a) * 0.1;
             double visibleA = a - xPadding;
             double visibleB = b + xPadding;
 
-            // **Добавляем ось Y (x = 0) если она в пределах видимой области**
             if (visibleA <= 0 && visibleB >= 0)
             {
-                // Ось Y проходит через x=0 от minY до maxY
                 LineSeries yAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось Y (x = 0)"
@@ -634,7 +584,6 @@ namespace WpfApp1
                 yAxisSeries.Points.Add(new DataPoint(0, maxY));
                 PlotModel.Series.Add(yAxisSeries);
 
-                // Подпись оси Y
                 var yAxisAnnotation = new TextAnnotation
                 {
                     Text = "y",
@@ -645,13 +594,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(yAxisAnnotation);
             }
 
-            // **Добавляем ось X (y = 0) если она в пределах видимой области**
             if (minY <= 0 && maxY >= 0)
             {
-                // Ось X проходит через y=0 от visibleA до visibleB
                 LineSeries xAxisSeries = new LineSeries
                 {
-                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), // Серый цвет
+                    Color = OxyColor.FromRgb(0x80, 0x80, 0x80), 
                     StrokeThickness = 1.5,
                     LineStyle = LineStyle.Solid,
                     Title = "Ось X (y = 0)"
@@ -661,7 +608,6 @@ namespace WpfApp1
                 xAxisSeries.Points.Add(new DataPoint(visibleB, 0));
                 PlotModel.Series.Add(xAxisSeries);
 
-                // Подпись оси X
                 var xAxisAnnotation = new TextAnnotation
                 {
                     Text = "x",
@@ -672,7 +618,6 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(xAxisAnnotation);
             }
 
-            // Добавляем координатную сетку
             PlotModel.Axes[0].MajorGridlineColor = OxyColor.FromArgb(30, 0x80, 0x80, 0x80);
             PlotModel.Axes[0].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[0].MajorGridlineThickness = 0.5;
@@ -681,7 +626,6 @@ namespace WpfApp1
             PlotModel.Axes[1].MajorGridlineStyle = LineStyle.Dot;
             PlotModel.Axes[1].MajorGridlineThickness = 0.5;
 
-            // Добавляем все сегменты графика функции
             int segmentNumber = 0;
             foreach (var segment in segments)
             {
@@ -701,7 +645,6 @@ namespace WpfApp1
                 segmentNumber++;
             }
 
-            // Добавляем найденный корень
             if (result != null)
             {
                 ScatterSeries rootSeries = new ScatterSeries
@@ -709,19 +652,18 @@ namespace WpfApp1
                     Title = "Корень",
                     MarkerType = MarkerType.Circle,
                     MarkerSize = 10,
-                    MarkerFill = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                    MarkerFill = OxyColor.FromRgb(0x4C, 0xAF, 0x50), 
                     MarkerStroke = OxyColor.FromRgb(0x2C, 0x5F, 0x9E),
                     MarkerStrokeThickness = 2
                 };
 
                 rootSeries.Points.Add(new ScatterPoint(result.ExtremumPoint, result.ExtremumValue));
 
-                // Добавляем вертикальную пунктирную линию от корня до оси X
                 if (minY <= 0 && maxY >= 0)
                 {
                     LineSeries rootToXAxisSeries = new LineSeries
                     {
-                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), 
                         StrokeThickness = 1,
                         LineStyle = LineStyle.Dash,
                         Title = null
@@ -731,12 +673,11 @@ namespace WpfApp1
                     PlotModel.Series.Add(rootToXAxisSeries);
                 }
 
-                // Добавляем горизонтальную пунктирную линию от корня до оси Y
                 if (visibleA <= 0 && visibleB >= 0)
                 {
                     LineSeries rootToYAxisSeries = new LineSeries
                     {
-                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), // Зеленый
+                        Color = OxyColor.FromRgb(0x4C, 0xAF, 0x50), 
                         StrokeThickness = 1,
                         LineStyle = LineStyle.Dash,
                         Title = null
@@ -746,11 +687,9 @@ namespace WpfApp1
                     PlotModel.Series.Add(rootToYAxisSeries);
                 }
 
-                // Определяем точность для отображения
                 double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 int decimalPlaces = PrecisionFormatConverter.GetDecimalPlacesFromEpsilon(epsilon);
 
-                // Добавляем подпись с координатами корня
                 var rootAnnotation = new TextAnnotation
                 {
                     Text = $"({result.ExtremumPoint.ToString($"F{decimalPlaces}")}, {result.ExtremumValue.ToString($"F{decimalPlaces}")})",
@@ -764,7 +703,6 @@ namespace WpfApp1
                 PlotModel.Series.Add(rootSeries);
             }
 
-            // Добавляем точку пересечения осей (0,0) если она видима
             if (visibleA <= 0 && visibleB >= 0 && minY <= 0 && maxY >= 0)
             {
                 ScatterSeries originSeries = new ScatterSeries
@@ -789,13 +727,11 @@ namespace WpfApp1
                 PlotModel.Annotations.Add(originAnnotation);
             }
 
-            // Обновляем границы осей для лучшего отображения
             PlotModel.Axes[0].Minimum = visibleA;
             PlotModel.Axes[0].Maximum = visibleB;
             PlotModel.Axes[1].Minimum = minY;
             PlotModel.Axes[1].Maximum = maxY;
 
-            // Добавляем информацию о знаках на концах интервала
             try
             {
                 double fa = method.CalculateFunction(a);
@@ -881,7 +817,6 @@ namespace WpfApp1
             txtFunction.Text = "x^2";
             cmbExtremumType.SelectedIndex = 0;
 
-            // Сбрасываем результаты
             lblResult.Text = "Результаты:";
             lblRootResult.Text = "";
 
@@ -909,20 +844,15 @@ namespace WpfApp1
 
             string result = function.Trim();
 
-            // 1. Заменяем запятые на точки для десятичных чисел
             result = result.Replace(",", ".");
 
-            // 2. Заменяем e^ на exp (пользовательский ввод)
             result = Regex.Replace(result, @"e\s*\^\s*", "exp(", RegexOptions.IgnoreCase);
 
-            // 3. Если мы добавили exp(, нужно закрыть скобку
             if (result.Contains("exp(") && !result.Contains("exp()"))
             {
-                // Находим позицию начала exp
                 int expIndex = result.IndexOf("exp(", StringComparison.OrdinalIgnoreCase);
                 if (expIndex >= 0)
                 {
-                    // Ищем закрывающую скобку для этого exp
                     int balance = 0;
                     for (int i = expIndex + 4; i < result.Length; i++)
                     {
@@ -931,13 +861,11 @@ namespace WpfApp1
                         {
                             if (balance == 0)
                             {
-                                // Нашли закрывающую скобку
                                 break;
                             }
                             balance--;
                         }
 
-                        // Если дошли до конца и нет закрывающей скобки
                         if (i == result.Length - 1 && balance >= 0)
                         {
                             result += ")";

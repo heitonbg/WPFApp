@@ -12,7 +12,6 @@ namespace WpfApp1
 
         public NewtonMethod(string function)
         {
-            // Используем тот же процесс обработки функции, что и в DihotomyMethod
             string processedFunction = function.ToLower();
             _expression = new Expression(processedFunction, EvaluateOptions.IgnoreCase);
             _expression.Parameters["pi"] = Math.PI;
@@ -20,7 +19,6 @@ namespace WpfApp1
             _expression.EvaluateFunction += EvaluateFunction;
             _expression.EvaluateParameter += EvaluateParameter;
 
-            // Создаем вспомогательный объект для проверки функции
             _dihotomyHelper = new DihotomyMethod(function);
         }
 
@@ -105,7 +103,6 @@ namespace WpfApp1
 
         public bool TestFunctionOnInterval(double a, double b)
         {
-            // Используем проверку из DihotomyMethod
             return _dihotomyHelper.TestFunctionOnInterval(a, b);
         }
 
@@ -202,7 +199,6 @@ namespace WpfApp1
                 if (double.IsInfinity(secondDerivative) || double.IsNaN(secondDerivative))
                     secondDerivative = 1.0;
 
-                // Сохраняем касательную для отображения
                 var tangent = CalculateTangentLine(x);
                 if (tangent != null && trackSteps)
                 {
@@ -222,7 +218,6 @@ namespace WpfApp1
                     });
                 }
 
-                // Проверка условий сходимости
                 bool isMinimum = Math.Abs(firstDerivative) < epsilon && secondDerivative > 0;
                 bool isLeftBoundary = Math.Abs(x - a) < epsilon && firstDerivative > 0;
                 bool isRightBoundary = Math.Abs(x - b) < epsilon && firstDerivative < 0;
@@ -237,13 +232,11 @@ namespace WpfApp1
                     break;
                 }
 
-                // Итерация Ньютона
                 double xNew;
                 if (Math.Abs(secondDerivative) > epsilon)
                 {
                     double newtonStep = -firstDerivative / secondDerivative;
 
-                    // Ограничиваем шаг
                     double maxStep = (b - a) / 10;
                     if (Math.Abs(newtonStep) > maxStep)
                     {
@@ -254,15 +247,12 @@ namespace WpfApp1
                 }
                 else
                 {
-                    // Если вторая производная слишком мала, используем градиентный спуск
                     double alpha = 0.1;
                     xNew = x - alpha * firstDerivative;
                 }
 
-                // Ограничиваем точку интервалом
                 xNew = Math.Max(a, Math.Min(xNew, b));
 
-                // Проверка сходимости по изменению x
                 if (Math.Abs(xNew - x) < epsilon)
                 {
                     converged = true;
@@ -293,13 +283,11 @@ namespace WpfApp1
                 x = xNew;
             }
 
-            // Если минимум не найден, используем сканирование как в DihotomyMethod
             if (!foundMinimum)
             {
                 double scanPoint = FindMinimumByScan(a, b, 50);
                 double scanValue = CalculateFunction(scanPoint);
 
-                // Сравниваем с границами
                 if (fa < scanValue && fa < fb)
                 {
                     x = a;
