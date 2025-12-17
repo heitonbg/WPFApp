@@ -35,12 +35,6 @@ namespace WpfApp1
         // Режим камеры
         private bool _isInspectMode = true;
 
-        // Состояние полноэкранного режима
-        private bool _isFullscreen = false;
-        private WindowState _previousWindowState;
-        private WindowStyle _previousWindowStyle;
-        private ResizeMode _previousResizeMode;
-
         public CoordinateDescentWindow()
         {
             InitializeComponent();
@@ -48,7 +42,6 @@ namespace WpfApp1
             this.Loaded += Window_Loaded;
             this.SizeChanged += Window_SizeChanged;
 
-            // Добавляем обработчик нажатия клавиш для быстрых клавиш меню
             this.KeyDown += Window_KeyDown;
         }
 
@@ -70,7 +63,6 @@ namespace WpfApp1
 
         private void Initialize3DViewport()
         {
-            // Настраиваем камеру
             viewport3D.Camera = new PerspectiveCamera
             {
                 Position = new Point3D(10, 10, 10),
@@ -79,16 +71,13 @@ namespace WpfApp1
                 FieldOfView = 60
             };
 
-            // Инициализируем коллекции
             _iterationSpheres = new List<SphereVisual3D>();
             _contourLines = new List<LinesVisual3D>();
             _contourLabels = new List<BillboardTextVisual3D>();
 
-            // Добавляем обработчики мыши
             viewport3D.MouseDown += Viewport3D_MouseDown;
             viewport3D.MouseDoubleClick += Viewport3D_MouseDoubleClick;
 
-            // Настраиваем адаптивный размер
             viewport3D.Height = 500;
         }
 
@@ -107,10 +96,10 @@ namespace WpfApp1
                 _currentYStart = double.Parse(txtYStart.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 _currentYEnd = double.Parse(txtYEnd.Text.Replace(",", "."), CultureInfo.InvariantCulture);
                 double epsilon = double.Parse(txtEpsilon.Text.Replace(",", "."), CultureInfo.InvariantCulture);
+                double lambda = double.Parse(txtLambda.Text.Replace(",", "."), CultureInfo.InvariantCulture); 
                 string function = txtFunction.Text;
                 bool findMinimum = cmbExtremumType.SelectedIndex == 0;
 
-                // Парсим начальную точку (если задана)
                 double? startX = null;
                 double? startY = null;
 
@@ -126,30 +115,25 @@ namespace WpfApp1
                     startY = Math.Max(_currentYStart, Math.Min(startY.Value, _currentYEnd));
                 }
 
-                // Обработка функции
                 function = PreprocessFunction(function);
 
                 _currentMethod = new CoordinateDescentMethod(function);
 
-                // Запускаем метод покоординатного спуска
                 _currentResult = _currentMethod.FindExtremum(
                     _currentXStart, _currentXEnd, _currentYStart, _currentYEnd,
                     epsilon, findMinimum, startX, startY,
-                    int.Parse(txtMaxIterations.Text));
+                    int.Parse(txtMaxIterations.Text),
+                    lambda); 
 
-                // Обновляем UI
                 UpdateResultsUI(findMinimum, epsilon);
 
-                // Показываем историю итераций
                 if (_currentResult?.IterationHistory != null)
                 {
                     dgIterations.ItemsSource = _currentResult.IterationHistory;
                 }
 
-                // Строим 3D визуализацию
                 Create3DVisualization();
 
-                // Рисуем график сходимости
                 DrawConvergenceGraph();
             }
             catch (Exception ex)
@@ -161,7 +145,6 @@ namespace WpfApp1
 
         private void Create3DVisualization()
         {
-            // Проверяем, есть ли данные для визуализации
             if (_currentResult == null || _currentMethod == null)
             {
                 MessageBox.Show("Нет данных для визуализации. Сначала выполните расчет функции.",
@@ -173,37 +156,31 @@ namespace WpfApp1
             {
                 Clear3DScene();
 
-                // 1. Добавляем координатную сетку
                 if (_showGrid)
                 {
                     AddGridLines();
                 }
 
-                // 2. Добавляем линии уровня (до поверхности для лучшей видимости)
                 if (_showContours && _currentMethod != null)
                 {
                     AddContourLines();
                 }
 
-                // 3. Добавляем поверхность функции
                 if (_showSurface && _currentMethod != null)
                 {
                     AddFunctionSurface();
                 }
 
-                // 4. Добавляем траекторию спуска
                 if (_showTrajectory && _currentResult?.IterationHistory != null)
                 {
                     AddTrajectory(_currentResult.IterationHistory);
                 }
 
-                // Автоматически настраиваем камеру
                 if (viewport3D != null)
                 {
                     viewport3D.ZoomExtents();
                 }
 
-                // Обновляем состояния меню
                 UpdateMenuStates();
             }
             catch (Exception ex)
@@ -246,25 +223,21 @@ namespace WpfApp1
         {
             try
             {
-                // Генерируем данные поверхности
                 var surfacePoints = _currentMethod.GenerateSurfaceData(
                     _currentXStart, _currentXEnd,
                     _currentYStart, _currentYEnd,
-                    40); // разрешение
+                    40); 
 
                 if (!surfacePoints.Any())
                     return;
 
-                // Преобразуем в Point3DCollection для Helix Toolkit
                 var pointCollection = new Point3DCollection();
 
-                // Создаем точки
                 foreach (var point in surfacePoints)
                 {
                     pointCollection.Add(new Point3D(point.X, point.Y, point.Z));
                 }
 
-                // Создаем визуализацию точек
                 _surfacePoints = new PointsVisual3D
                 {
                     Points = pointCollection,
@@ -277,7 +250,6 @@ namespace WpfApp1
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка создания поверхности: {ex.Message}");
-                // Альтернатива: простые точки
                 AddSimpleSurface();
             }
         }
@@ -287,7 +259,7 @@ namespace WpfApp1
             var points = _currentMethod.GenerateSurfaceData(
                 _currentXStart, _currentXEnd,
                 _currentYStart, _currentYEnd,
-                20); // меньше точек для скорости
+                20); 
 
             var pointCollection = new Point3DCollection();
             foreach (var point in points)
@@ -312,12 +284,11 @@ namespace WpfApp1
                 var contours = _currentMethod.GenerateContourLines(
                     _currentXStart, _currentXEnd,
                     _currentYStart, _currentYEnd,
-                    7, 40); // контуры и разрешение
+                    7, 40); 
 
                 double minZ = double.MaxValue;
                 double maxZ = double.MinValue;
 
-                // Находим диапазон значений
                 foreach (var contour in contours)
                 {
                     if (contour.Any())
@@ -345,7 +316,6 @@ namespace WpfApp1
                             pointCollection.Add(new Point3D(point.X, point.Y, point.Z));
                         }
 
-                        // Цвет в зависимости от значения
                         double normalizedValue = (contour[0].Z - minZ) / (maxZ - minZ);
                         Color contourColor = GetContourColor(normalizedValue);
 
@@ -359,7 +329,6 @@ namespace WpfApp1
                         _contourLines.Add(contourLine);
                         viewport3D.Children.Add(contourLine);
 
-                        // Добавляем подпись значения (каждую 3-ю линию)
                         if (contourIndex % 3 == 0 && contour.Count > 20)
                         {
                             int midPoint = contour.Count / 2;
@@ -381,7 +350,6 @@ namespace WpfApp1
 
         private Color GetContourColor(double normalizedValue)
         {
-            // Градиент от синего к красному
             normalizedValue = Math.Max(0, Math.Min(1, normalizedValue));
             byte r = (byte)(255 * normalizedValue);
             byte g = 0;
@@ -411,7 +379,6 @@ namespace WpfApp1
             if (iterations == null || iterations.Count < 2)
                 return;
 
-            // Очищаем предыдущую траекторию
             foreach (var sphere in _iterationSpheres)
             {
                 viewport3D.Children.Remove(sphere);
@@ -424,7 +391,6 @@ namespace WpfApp1
                 _trajectoryLine = null;
             }
 
-            // Создаем линию траектории
             var points = new Point3DCollection();
 
             for (int i = 0; i < iterations.Count; i++)
@@ -432,7 +398,6 @@ namespace WpfApp1
                 var iteration = iterations[i];
                 double z = iteration.Value;
 
-                // Ограничиваем Z для визуализации
                 if (double.IsInfinity(z) || double.IsNaN(z) || Math.Abs(z) > 1000)
                 {
                     z = 0;
@@ -441,12 +406,10 @@ namespace WpfApp1
                 var point = new Point3D(iteration.X, iteration.Y, z);
                 points.Add(point);
 
-                // Вычисляем радиус сферы на основе размера области
                 double xSize = _currentXEnd - _currentXStart;
                 double ySize = _currentYEnd - _currentYStart;
                 double sphereRadius = Math.Max(xSize, ySize) * 0.015;
 
-                // Добавляем сферу для точки итерации
                 var sphere = new SphereVisual3D
                 {
                     Center = point,
@@ -458,7 +421,6 @@ namespace WpfApp1
                 viewport3D.Children.Add(sphere);
             }
 
-            // Создаем линию, соединяющую точки
             _trajectoryLine = new LinesVisual3D
             {
                 Points = points,
@@ -576,10 +538,9 @@ namespace WpfApp1
             lblIterations.Text = $"{_currentResult.Iterations}";
             lblStatus.Text = _currentResult.GetStatus();
 
-            // Показываем предупреждение о границе
             if (_currentResult.BoundaryWarning)
             {
-                lblWarning.Text = "⚠ Внимание: Возможно, алгоритм остановился на границе области. Попробуйте другую начальную точку или увеличьте интервал поиска.";
+                lblWarning.Text = "Внимание: Возможно, алгоритм остановился на границе области. Попробуйте другую начальную точку или увеличьте интервал поиска.";
                 lblWarning.Visibility = Visibility.Visible;
             }
             else
@@ -767,6 +728,7 @@ namespace WpfApp1
                 string.IsNullOrWhiteSpace(txtYStart.Text) ||
                 string.IsNullOrWhiteSpace(txtYEnd.Text) ||
                 string.IsNullOrWhiteSpace(txtEpsilon.Text) ||
+                string.IsNullOrWhiteSpace(txtLambda.Text) || 
                 string.IsNullOrWhiteSpace(txtMaxIterations.Text))
             {
                 MessageBox.Show("Все обязательные поля должны быть заполнены!", "Ошибка ввода",
@@ -784,6 +746,8 @@ namespace WpfApp1
                     CultureInfo.InvariantCulture, out double yEnd) ||
                 !double.TryParse(txtEpsilon.Text.Replace(",", "."), NumberStyles.Any,
                     CultureInfo.InvariantCulture, out double epsilon) ||
+                !double.TryParse(txtLambda.Text.Replace(",", "."), NumberStyles.Any, 
+                    CultureInfo.InvariantCulture, out double lambda) ||
                 !int.TryParse(txtMaxIterations.Text, out int maxIterations))
             {
                 MessageBox.Show("Все числовые параметры должны быть корректными числами!", "Ошибка ввода",
@@ -830,6 +794,13 @@ namespace WpfApp1
                 return false;
             }
 
+            if (lambda <= 0) 
+            {
+                MessageBox.Show("Длина шага λ должна быть положительным числом!", "Ошибка ввода",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
             if (maxIterations <= 0 || maxIterations > 10000)
             {
                 MessageBox.Show("Максимальное число итераций должно быть от 1 до 10000!", "Ошибка ввода",
@@ -859,6 +830,7 @@ namespace WpfApp1
             txtStartX.Text = "";
             txtStartY.Text = "";
             txtEpsilon.Text = "0.001";
+            txtLambda.Text = "1.0"; 
             txtMaxIterations.Text = "100";
 
             ClearResults();
@@ -888,7 +860,6 @@ namespace WpfApp1
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // Адаптация размеров элементов интерфейса
             if (e.NewSize.Width < 1200)
             {
                 viewport3D.Height = 400;
@@ -905,7 +876,6 @@ namespace WpfApp1
                 canvasConvergence.Height = 180;
             }
 
-            // Перерисовываем график сходимости
             if (_currentResult?.ConvergenceHistory != null)
             {
                 DrawConvergenceGraph();
@@ -961,7 +931,6 @@ namespace WpfApp1
                 _showGrid = !_showGrid;
                 miShowGrid.IsChecked = _showGrid;
 
-                // Если графика нет, просто обновляем состояние без пересоздания
                 if (_currentResult == null)
                 {
                     MessageBox.Show("Сначала выполните расчет функции", "Нет данных",
@@ -986,7 +955,6 @@ namespace WpfApp1
                 _showSurface = !_showSurface;
                 miShowSurface.IsChecked = _showSurface;
 
-                // Если графика нет, просто обновляем состояние без пересоздания
                 if (_currentResult == null)
                 {
                     MessageBox.Show("Сначала выполните расчет функции", "Нет данных",
@@ -1011,7 +979,6 @@ namespace WpfApp1
                 _showTrajectory = !_showTrajectory;
                 miShowTrajectory.IsChecked = _showTrajectory;
 
-                // Если графика нет, просто обновляем состояние без пересоздания
                 if (_currentResult == null)
                 {
                     MessageBox.Show("Сначала выполните расчет функции", "Нет данных",
@@ -1036,7 +1003,6 @@ namespace WpfApp1
                 _showContours = !_showContours;
                 miShowContours.IsChecked = _showContours;
 
-                // Если графика нет, просто обновляем состояние без пересоздания
                 if (_currentResult == null)
                 {
                     MessageBox.Show("Сначала выполните расчет функции", "Нет данных",
@@ -1156,7 +1122,7 @@ namespace WpfApp1
             {
                 Title = "Выберите пример функции",
                 Width = 450,
-                Height = 350,
+                Height = 400, 
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 ResizeMode = ResizeMode.NoResize,
@@ -1188,6 +1154,7 @@ namespace WpfApp1
                     XStart = "-2", XEnd = "2",
                     YStart = "-2", YEnd = "2",
                     StartX = "1.5", StartY = "1.5",
+                    Lambda = "1.0", 
                     Description = "Минимум в (0,0), f=0"
                 },
                 new {
@@ -1196,6 +1163,7 @@ namespace WpfApp1
                     XStart = "-5", XEnd = "5",
                     YStart = "-5", YEnd = "5",
                     StartX = "0", StartY = "0",
+                    Lambda = "2.0",
                     Description = "Минимум в (1,-2), f=0"
                 },
                 new {
@@ -1204,6 +1172,7 @@ namespace WpfApp1
                     XStart = "-2", XEnd = "2",
                     YStart = "-1", YEnd = "3",
                     StartX = "-1", StartY = "1",
+                    Lambda = "0.5",  
                     Description = "Минимум в (1,1), f=0 (сложная)"
                 },
                 new {
@@ -1212,6 +1181,7 @@ namespace WpfApp1
                     XStart = "0", XEnd = "6.28",
                     YStart = "0", YEnd = "6.28",
                     StartX = "1", StartY = "1",
+                    Lambda = "1.0",
                     Description = "Много локальных экстремумов"
                 },
                 new {
@@ -1220,6 +1190,7 @@ namespace WpfApp1
                     XStart = "-3", XEnd = "3",
                     YStart = "-3", YEnd = "3",
                     StartX = "0.5", StartY = "0.5",
+                    Lambda = "0.5",
                     Description = "Максимум в центре"
                 },
             };
@@ -1248,6 +1219,7 @@ namespace WpfApp1
                     txtYEnd.Text = ex.YEnd;
                     txtStartX.Text = ex.StartX;
                     txtStartY.Text = ex.StartY;
+                    txtLambda.Text = ex.Lambda; 
                     dialog.Close();
                 };
 
@@ -1256,6 +1228,11 @@ namespace WpfApp1
                 toolTipContent.Children.Add(new TextBlock
                 {
                     Text = $"f(x,y) = {example.Function}",
+                    FontWeight = FontWeights.Bold
+                });
+                toolTipContent.Children.Add(new TextBlock
+                {
+                    Text = $"λ = {example.Lambda}", 
                     FontWeight = FontWeights.Bold
                 });
                 toolTipContent.Children.Add(new TextBlock
@@ -1352,53 +1329,35 @@ namespace WpfApp1
 
 1. Инициализация:
    • Выбрать начальную точку x⁰ = (x₁⁰, x₂⁰, ..., xₙ⁰)
-   • Задать точность ε > 0
+   • Задать точность ε > 0 и длину шага λ > 0
    • Установить k = 0
 
 2. Для каждой координаты i = 1, 2, ..., n:
-   • Фиксировать все координаты, кроме i-й
-   • Решить одномерную задачу оптимизации:
-        min f(x₁ᵏ, ..., xᵢ₋₁ᵏ, t, xᵢ₊₁ᵏ, ..., xₙᵏ)
-   • Обновить i-ю координату: xᵢᵏ⁺¹ = argmin
+   • Исследовать монотонность в ε-окрестности
+   • Определить направление поиска (знак λ)
+   • Выполнить одномерный поиск на отрезке [xᵢᵏ, xᵢᵏ ± λ]
+   • Обновить i-ю координату
 
 3. Проверка условия остановки:
-   • Если ||xᵏ⁺¹ - xᵏ|| < ε, то остановиться
+   • Если ||xᵏ⁺¹ - xᵏ|| < 2ε, то остановиться
    • Иначе: k = k + 1 и перейти к шагу 2
+
+Параметры алгоритма в данной реализации:
+• ε (эпсилон) - точность поиска
+• λ (лямбда) - длина шага поиска
+• Максимальное число итераций
 
 Преимущества метода:
 • Простота реализации — не требует вычисления градиента
 • Эффективен для функций с разделяющимися переменными
 • Может использоваться для негладких функций
-• Легко распараллеливается
 
-Ограничения и недостатки:
-• Медленная сходимость для некоторых функций (зигзагообразная траектория)
-• Чувствителен к выбору начальной точки
+Ограничения:
+• Медленная сходимость для некоторых функций
+• Чувствителен к выбору начальной точки и шага λ
 • Может застревать в локальных экстремумах
-• Не эффективен для функций с сильной корреляцией между переменными
 
-Математическая формулировка:
-Для функции f(x, y) метод работает следующим образом:
-1. При фиксированном y найти x* = argmin f(x, y)
-2. При фиксированном x* найти y* = argmin f(x*, y)
-3. Повторять до сходимости
-
-Критерии остановки:
-1. Норма разности между итерациями: ||xᵏ⁺¹ - xᵏ|| < ε
-2. Изменение значения функции: |f(xᵏ⁺¹) - f(xᵏ)| < ε
-3. Достижение максимального числа итераций
-
-Применение в данной программе:
-• Визуализация траектории спуска в 3D
-• Отображение линий уровня (изолиний)
-• График сходимости значений функции
-• Подробная история всех итераций
-
-Советы по использованию:
-1. Для быстрой сходимости выбирайте начальную точку близко к экстремуму
-2. Используйте двойной клик на графике для установки начальной точки
-3. Наблюдайте за траекторией спуска для понимания работы метода
-4. Экспериментируйте с разными функциями и параметрами",
+В данной программе реализован классический метод покоординатного спуска с параметром λ для управления длиной шага поиска.",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 13,
                 Margin = new Thickness(0, 0, 0, 20)
@@ -1478,7 +1437,6 @@ namespace WpfApp1
   - Арксинус: asin(x)
   - Арккосинус: acos(x)
   - Арктангенс: atan(x)
-  - Арктангенс от y/x: atan2(y, x)
 
 • Экспоненциальные и логарифмические:
   - Экспонента: exp(x)
@@ -1488,14 +1446,8 @@ namespace WpfApp1
 
 • Степенные и корни:
   - Квадратный корень: sqrt(x)
-  - Кубический корень: cbrt(x)
   - Степень: pow(x, y)
   - Абсолютное значение: abs(x)
-
-• Гиперболические:
-  - Гиперболический синус: sinh(x)
-  - Гиперболический косинус: cosh(x)
-  - Гиперболический тангенс: tanh(x)
 
 • Округление:
   - Округление вниз: floor(x)
@@ -1505,11 +1457,6 @@ namespace WpfApp1
 Математические константы:
 • pi или π (3.141592653589793)
 • e (2.718281828459045)
-
-Специальные функции для метода покоординатного спуска:
-• Можно использовать любые комбинации переменных x и y
-• Поддерживаются вложенные функции
-• Можно создавать сложные составные выражения
 
 Примеры корректных функций:
 1. Простые: x^2 + y^2
@@ -1523,13 +1470,7 @@ namespace WpfApp1
 • Используйте точку (.) как разделитель десятичных дробей
 • Все скобки должны быть правильно закрыты
 • Функции чувствительны к регистру (sin, а не Sin)
-• Избегайте деления на ноль
-
-Советы:
-1. Для проверки синтаксиса используйте кнопку 'Примеры'
-2. Начните с простых функций для понимания работы метода
-3. Используйте скобки для явного указания порядка операций
-4. Для сложных функций проверяйте корректность в математическом пакете",
+• Избегайте деления на нero",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 12,
                 Margin = new Thickness(0, 0, 0, 20)
@@ -1554,93 +1495,6 @@ namespace WpfApp1
 
             scrollViewer.Content = stackPanel;
             dialog.Content = scrollViewer;
-            dialog.ShowDialog();
-        }
-
-        private void ShowAboutProgramDialog()
-        {
-            var dialog = new Window
-            {
-                Title = "О программе",
-                Width = 400,
-                Height = 300,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = this,
-                WindowStyle = WindowStyle.ToolWindow,
-                Background = new SolidColorBrush(Color.FromRgb(240, 245, 252))
-            };
-
-            var stackPanel = new StackPanel
-            {
-                Margin = new Thickness(20)
-            };
-
-            var title = new TextBlock
-            {
-                Text = "Метод покоординатного спуска",
-                FontSize = 18,
-                FontWeight = FontWeights.Bold,
-                Foreground = Brushes.Navy,
-                Margin = new Thickness(0, 0, 0, 10),
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-
-            var version = new TextBlock
-            {
-                Text = "Версия 1.0",
-                FontSize = 14,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = Brushes.Gray,
-                Margin = new Thickness(0, 0, 0, 20),
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-
-            var content = new TextBlock
-            {
-                Text = @"Программа для визуализации и применения метода 
-покоординатного спуска для поиска экстремумов 
-функций двух переменных.
-
-Возможности:
-• 3D визуализация поверхности функции
-• Отображение линий уровня (изолиний)
-• Визуализация траектории спуска
-• График сходимости метода
-• Подробная история всех итераций
-• Интерактивное управление 3D-сценой
-
-Используемые технологии:
-• WPF для пользовательского интерфейса
-• Helix Toolkit для 3D визуализации
-• NCalc для вычисления математических выражений
-
-Автор: Студент/Разработчик
-Дата создания: 2024
-Назначение: Учебный проект по численным методам оптимизации",
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 12,
-                Margin = new Thickness(0, 0, 0, 20),
-                TextAlignment = TextAlignment.Center
-            };
-
-            var closeButton = new Button
-            {
-                Content = "Закрыть",
-                Width = 100,
-                Height = 30,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Background = Brushes.Navy,
-                Foreground = Brushes.White,
-                Cursor = Cursors.Hand
-            };
-            closeButton.Click += (s, args) => dialog.Close();
-
-            stackPanel.Children.Add(title);
-            stackPanel.Children.Add(version);
-            stackPanel.Children.Add(content);
-            stackPanel.Children.Add(closeButton);
-
-            dialog.Content = stackPanel;
             dialog.ShowDialog();
         }
     }

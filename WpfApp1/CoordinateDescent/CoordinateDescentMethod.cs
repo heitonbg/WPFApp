@@ -1,4 +1,4 @@
-using System;
+п»їusing System;
 using NCalc;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,15 +11,14 @@ namespace WpfApp1
     public class CoordinateDescentMethod
     {
         private readonly Expression _expression;
-        private const double GoldenRatio = 1.618033988749895;
         private int _functionEvaluations = 0;
         private Stopwatch _stopwatch = new Stopwatch();
 
         public CoordinateDescentMethod(string function)
         {
             string processedFunction = PreprocessFunctionString(function);
-            Console.WriteLine($"Исходная функция: {function}");
-            Console.WriteLine($"Обработанная функция: {processedFunction}");
+            Console.WriteLine($"РСЃС…РѕРґРЅР°СЏ С„СѓРЅРєС†РёСЏ: {function}");
+            Console.WriteLine($"РћР±СЂР°Р±РѕС‚Р°РЅРЅР°СЏ С„СѓРЅРєС†РёСЏ: {processedFunction}");
 
             try
             {
@@ -32,12 +31,12 @@ namespace WpfApp1
                 _expression.Parameters["x"] = 1.0;
                 _expression.Parameters["y"] = 1.0;
                 var testResult = _expression.Evaluate();
-                Console.WriteLine($"Тест вычисления в (1,1): {testResult}");
+                Console.WriteLine($"РўРµСЃС‚ РІС‹С‡РёСЃР»РµРЅРёСЏ РІ (1,1): {testResult}");
             }
             catch (Exception ex)
             {
-                throw new ArgumentException($"Ошибка в функции '{function}': {ex.Message}\n" +
-                                          $"Используйте синтаксис: pow(x,2), sin(x), exp(y), etc.");
+                throw new ArgumentException($"РћС€РёР±РєР° РІ С„СѓРЅРєС†РёРё '{function}': {ex.Message}\n" +
+                                          $"РСЃРїРѕР»СЊР·СѓР№С‚Рµ СЃРёРЅС‚Р°РєСЃРёСЃ: pow(x,2), sin(x), exp(y), etc.");
             }
         }
 
@@ -218,18 +217,18 @@ namespace WpfApp1
                         else if (args.Parameters.Length == 2)
                             args.Result = Math.Log(Convert.ToDouble(args.Parameters[0].Evaluate()),
                                                  Convert.ToDouble(args.Parameters[1].Evaluate()));
-                        else throw new ArgumentException("Функция log требует 1 или 2 аргумента");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ log С‚СЂРµР±СѓРµС‚ 1 РёР»Рё 2 Р°СЂРіСѓРјРµРЅС‚Р°");
                         break;
                     case "log10":
                         if (args.Parameters.Length == 1)
                             args.Result = Math.Log10(Convert.ToDouble(args.Parameters[0].Evaluate()));
-                        else throw new ArgumentException("Функция log10 требует 1 аргумент");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ log10 С‚СЂРµР±СѓРµС‚ 1 Р°СЂРіСѓРјРµРЅС‚");
                         break;
                     case "pow":
                         if (args.Parameters.Length == 2)
                             args.Result = Math.Pow(Convert.ToDouble(args.Parameters[0].Evaluate()),
                                                  Convert.ToDouble(args.Parameters[1].Evaluate()));
-                        else throw new ArgumentException("Функция pow требует 2 аргумента");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ pow С‚СЂРµР±СѓРµС‚ 2 Р°СЂРіСѓРјРµРЅС‚Р°");
                         break;
                     case "floor":
                         args.Result = Math.Floor(Convert.ToDouble(args.Parameters[0].Evaluate()));
@@ -243,27 +242,27 @@ namespace WpfApp1
                         else if (args.Parameters.Length == 2)
                             args.Result = Math.Round(Convert.ToDouble(args.Parameters[0].Evaluate()),
                                                    Convert.ToInt32(args.Parameters[1].Evaluate()));
-                        else throw new ArgumentException("Функция round требует 1 или 2 аргумента");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ round С‚СЂРµР±СѓРµС‚ 1 РёР»Рё 2 Р°СЂРіСѓРјРµРЅС‚Р°");
                         break;
                     case "min":
                         if (args.Parameters.Length == 2)
                             args.Result = Math.Min(Convert.ToDouble(args.Parameters[0].Evaluate()),
                                                  Convert.ToDouble(args.Parameters[1].Evaluate()));
-                        else throw new ArgumentException("Функция min требует 2 аргумента");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ min С‚СЂРµР±СѓРµС‚ 2 Р°СЂРіСѓРјРµРЅС‚Р°");
                         break;
                     case "max":
                         if (args.Parameters.Length == 2)
                             args.Result = Math.Max(Convert.ToDouble(args.Parameters[0].Evaluate()),
                                                  Convert.ToDouble(args.Parameters[1].Evaluate()));
-                        else throw new ArgumentException("Функция max требует 2 аргумента");
+                        else throw new ArgumentException("Р¤СѓРЅРєС†РёСЏ max С‚СЂРµР±СѓРµС‚ 2 Р°СЂРіСѓРјРµРЅС‚Р°");
                         break;
                     default:
-                        throw new ArgumentException($"Неизвестная функция: {name}");
+                        throw new ArgumentException($"РќРµРёР·РІРµСЃС‚РЅР°СЏ С„СѓРЅРєС†РёСЏ: {name}");
                 }
             }
             catch (Exception ex)
             {
-                throw new ArgumentException($"Ошибка в функции {name}: {ex.Message}");
+                throw new ArgumentException($"РћС€РёР±РєР° РІ С„СѓРЅРєС†РёРё {name}: {ex.Message}");
             }
         }
 
@@ -291,60 +290,50 @@ namespace WpfApp1
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка вычисления в точке ({x}, {y}): {ex.Message}");
+                Console.WriteLine($"РћС€РёР±РєР° РІС‹С‡РёСЃР»РµРЅРёСЏ РІ С‚РѕС‡РєРµ ({x}, {y}): {ex.Message}");
                 return double.MaxValue;
             }
         }
 
-        private double GoldenSectionSearch(double start, double end, bool findMinimum,
-                                         Func<double, double> function, double epsilon)
+        private double OneDimensionalSearch(double a, double b, Func<double, double> function,
+                                          bool findMinimum, double epsilon)
         {
-            double a = start, b = end;
+            double left = a;
+            double right = b;
 
-            if (Math.Abs(b - a) < epsilon * 0.1) // Более строгое условие остановки
-                return (a + b) / 2;
-
-            double x1 = b - (b - a) / GoldenRatio;
-            double x2 = a + (b - a) / GoldenRatio;
-
-            double f1 = function(x1);
-            double f2 = function(x2);
-
-            while (Math.Abs(b - a) > epsilon)
+            while (Math.Abs(right - left) > epsilon)
             {
-                if ((findMinimum && f1 < f2) || (!findMinimum && f1 > f2))
+                double mid = (left + right) / 2;
+                double fMid = function(mid);
+                double fMidPlus = function(mid + epsilon / 10);
+
+                if ((findMinimum && fMidPlus < fMid) || (!findMinimum && fMidPlus > fMid))
                 {
-                    b = x2;
-                    x2 = x1;
-                    f2 = f1;
-                    x1 = b - (b - a) / GoldenRatio;
-                    f1 = function(x1);
+                    left = mid;
                 }
                 else
                 {
-                    a = x1;
-                    x1 = x2;
-                    f1 = f2;
-                    x2 = a + (b - a) / GoldenRatio;
-                    f2 = function(x2);
+                    right = mid;
                 }
             }
 
-            return (a + b) / 2;
+            return (left + right) / 2;
         }
 
         public CoordinateDescentResult FindExtremum(double xStart, double xEnd, double yStart, double yEnd,
                                                    double epsilon, bool findMinimum,
                                                    double? startX = null, double? startY = null,
-                                                   int maxIterations = 1000)
+                                                   int maxIterations = 1000,
+                                                   double lambda = 1.0)
         {
             _functionEvaluations = 0;
             _stopwatch.Restart();
 
             if (xStart >= xEnd || yStart >= yEnd)
-                throw new ArgumentException("Некорректные интервалы");
+                throw new ArgumentException("РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РёРЅС‚РµСЂРІР°Р»С‹");
 
-            if (epsilon <= 0) throw new ArgumentException("Точность должна быть положительной");
+            if (epsilon <= 0) throw new ArgumentException("РўРѕС‡РЅРѕСЃС‚СЊ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕР№");
+            if (lambda <= 0) throw new ArgumentException("Р”Р»РёРЅР° С€Р°РіР° О» РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕР№");
 
             double currentX = startX ?? (xStart + xEnd) / 2;
             double currentY = startY ?? (yStart + yEnd) / 2;
@@ -362,7 +351,7 @@ namespace WpfApp1
                     X = currentX,
                     Y = currentY,
                     Value = currentValue,
-                    Direction = "Начальная точка"
+                    Direction = "РќР°С‡Р°Р»СЊРЅР°СЏ С‚РѕС‡РєР°"
                 }
             };
 
@@ -370,13 +359,9 @@ namespace WpfApp1
             bool converged = false;
             int iterationCount = 0;
             bool boundaryWarning = false;
-            int noImprovementCount = 0;
             double bestValue = currentValue;
             double bestX = currentX;
             double bestY = currentY;
-
-            // Коэффициент для золотого сечения - меньше для быстрей сходимости
-            double goldenSearchEpsilon = epsilon * 5;
 
             while (iterationCount < maxIterations && !converged)
             {
@@ -386,60 +371,98 @@ namespace WpfApp1
                 double prevY = currentY;
                 double prevValue = currentValue;
 
-                // Поиск по X
-                try
+                bool searchInX = (iterationCount % 2 == 1);
+                string direction = searchInX ? "РџРѕ X" : "РџРѕ Y";
+
+                if (searchInX)
                 {
-                    double xOpt = GoldenSectionSearch(xStart, xEnd, findMinimum,
-                        x => CalculateFunction(x, currentY), goldenSearchEpsilon);
+                    double xLeft = currentX - epsilon;
+                    double xRight = currentX + epsilon;
 
-                    double fOpt = CalculateFunction(xOpt, currentY);
+                    xLeft = Math.Max(xStart, xLeft);
+                    xRight = Math.Min(xEnd, xRight);
 
-                    if ((findMinimum && fOpt < currentValue) || (!findMinimum && fOpt > currentValue))
+                    double fLeft = CalculateFunction(xLeft, currentY);
+                    double fRight = CalculateFunction(xRight, currentY);
+
+                    double searchStart, searchEnd;
+
+                    if ((findMinimum && fRight < fLeft) || (!findMinimum && fRight > fLeft))
                     {
-                        currentX = xOpt;
-                        currentValue = fOpt;
+                        searchStart = currentX;
+                        searchEnd = Math.Min(currentX + lambda, xEnd);
+                    }
+                    else
+                    {
+                        searchStart = Math.Max(currentX - lambda, xStart);
+                        searchEnd = currentX;
+                    }
+
+                    if (Math.Abs(searchEnd - searchStart) > epsilon)
+                    {
+                        double xOpt = OneDimensionalSearch(searchStart, searchEnd,
+                            x => CalculateFunction(x, currentY), findMinimum, epsilon);
+
+                        double fOpt = CalculateFunction(xOpt, currentY);
+
+                        if ((findMinimum && fOpt < currentValue) || (!findMinimum && fOpt > currentValue))
+                        {
+                            currentX = xOpt;
+                            currentValue = fOpt;
+                        }
                     }
                 }
-                catch
+                else
                 {
-                    // В случае ошибки продолжаем с текущей точкой
-                }
+                    double yBottom = currentY - epsilon;
+                    double yTop = currentY + epsilon;
 
-                // Поиск по Y
-                try
-                {
-                    double yOpt = GoldenSectionSearch(yStart, yEnd, findMinimum,
-                        y => CalculateFunction(currentX, y), goldenSearchEpsilon);
+                    yBottom = Math.Max(yStart, yBottom);
+                    yTop = Math.Min(yEnd, yTop);
 
-                    double fOpt = CalculateFunction(currentX, yOpt);
+                    double fBottom = CalculateFunction(currentX, yBottom);
+                    double fTop = CalculateFunction(currentX, yTop);
 
-                    if ((findMinimum && fOpt < currentValue) || (!findMinimum && fOpt > currentValue))
+                    double searchStart, searchEnd;
+
+                    if ((findMinimum && fTop < fBottom) || (!findMinimum && fTop > fBottom))
                     {
-                        currentY = yOpt;
-                        currentValue = fOpt;
+                        searchStart = currentY;
+                        searchEnd = Math.Min(currentY + lambda, yEnd);
+                    }
+                    else
+                    {
+                        searchStart = Math.Max(currentY - lambda, yStart);
+                        searchEnd = currentY;
+                    }
+
+                    if (Math.Abs(searchEnd - searchStart) > epsilon)
+                    {
+                        double yOpt = OneDimensionalSearch(searchStart, searchEnd,
+                            y => CalculateFunction(currentX, y), findMinimum, epsilon);
+
+                        double fOpt = CalculateFunction(currentX, yOpt);
+
+                        if ((findMinimum && fOpt < currentValue) || (!findMinimum && fOpt > currentValue))
+                        {
+                            currentY = yOpt;
+                            currentValue = fOpt;
+                        }
                     }
                 }
-                catch
-                {
-                    // В случае ошибки продолжаем с текущей точкой
-                }
 
-                // Сохраняем лучшую найденную точку
                 if ((findMinimum && currentValue < bestValue) || (!findMinimum && currentValue > bestValue))
                 {
                     bestValue = currentValue;
                     bestX = currentX;
                     bestY = currentY;
-                    noImprovementCount = 0;
-                }
-                else
-                {
-                    noImprovementCount++;
                 }
 
                 double deltaX = Math.Abs(currentX - prevX);
                 double deltaY = Math.Abs(currentY - prevY);
                 double deltaValue = Math.Abs(currentValue - prevValue);
+
+                double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
                 iterations.Add(new CoordinateDescentIteration
                 {
@@ -450,69 +473,29 @@ namespace WpfApp1
                     DeltaX = deltaX,
                     DeltaY = deltaY,
                     DeltaValue = deltaValue,
-                    Direction = iterationCount % 2 == 1 ? "По X" : "По Y"
+                    Direction = direction
                 });
 
                 convergenceHistory.Add(currentValue);
 
-                // Проверка на сходимость
-                bool smallMovement = deltaX < epsilon && deltaY < epsilon;
-                bool smallValueChange = deltaValue < epsilon * Math.Max(1, Math.Abs(currentValue));
+                converged = distance < 2 * epsilon;
 
-                // Проверка градиента (только если не на границе)
-                bool isOnXBoundary = Math.Abs(currentX - xStart) < epsilon * 10 ||
-                                    Math.Abs(currentX - xEnd) < epsilon * 10;
-                bool isOnYBoundary = Math.Abs(currentY - yStart) < epsilon * 10 ||
-                                    Math.Abs(currentY - yEnd) < epsilon * 10;
-                bool isOnBoundary = isOnXBoundary || isOnYBoundary;
-
-                bool smallGradient = false;
-                if (!isOnBoundary)
-                {
-                    double h = epsilon * 0.1;
-                    double gradX = (CalculateFunction(currentX + h, currentY) - CalculateFunction(currentX - h, currentY)) / (2 * h);
-                    double gradY = (CalculateFunction(currentX, currentY + h) - CalculateFunction(currentX, currentY - h)) / (2 * h);
-                    smallGradient = Math.Abs(gradX) < epsilon * 10 && Math.Abs(gradY) < epsilon * 10;
-                }
-
-                // Критерии остановки (более строгие)
-                converged = smallMovement || smallValueChange || smallGradient || noImprovementCount >= 10;
-
-                if (isOnBoundary)
-                {
-                    boundaryWarning = true;
-
-                    // Если на границе, но еще есть итерации, пробуем выйти из границы
-                    if (iterationCount < maxIterations / 2)
-                    {
-                        // Пробуем сместиться от границы
-                        currentX = Math.Max(xStart + epsilon, Math.Min(currentX, xEnd - epsilon));
-                        currentY = Math.Max(yStart + epsilon, Math.Min(currentY, yEnd - epsilon));
-                        currentValue = CalculateFunction(currentX, currentY);
-                        converged = false;
-                    }
-                }
+                bool isOnXBoundary = Math.Abs(currentX - xStart) < epsilon || Math.Abs(currentX - xEnd) < epsilon;
+                bool isOnYBoundary = Math.Abs(currentY - yStart) < epsilon || Math.Abs(currentY - yEnd) < epsilon;
+                boundaryWarning = isOnXBoundary || isOnYBoundary;
 
                 if (double.IsNaN(currentValue) || double.IsInfinity(currentValue))
                 {
                     converged = true;
-                    // Восстанавливаем лучшую найденную точку
                     currentX = bestX;
                     currentY = bestY;
                     currentValue = bestValue;
                     break;
                 }
-
-                // Ранняя остановка при достижении хорошей точности
-                if (smallMovement && smallValueChange && iterationCount > 5)
-                {
-                    converged = true;
-                }
             }
 
             _stopwatch.Stop();
 
-            // Возвращаем лучшую найденную точку
             return new CoordinateDescentResult
             {
                 X = bestX,
@@ -651,7 +634,7 @@ namespace WpfApp1
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка создания линий уровня: {ex.Message}");
+                Console.WriteLine($"РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ Р»РёРЅРёР№ СѓСЂРѕРІРЅСЏ: {ex.Message}");
             }
 
             return contours;
@@ -705,9 +688,9 @@ namespace WpfApp1
         public string GetFormattedValue() => Value.ToString($"F{GetPrecisionDigits()}");
         public string GetStatus()
         {
-            string status = Converged ? "Сошелся" : "Достигнут лимит итераций";
+            string status = Converged ? "РЎРѕС€РµР»СЃСЏ" : "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РёС‚РµСЂР°С†РёР№";
             if (BoundaryWarning)
-                status += " (возможно на границе)";
+                status += " (РІРѕР·РјРѕР¶РЅРѕ РЅР° РіСЂР°РЅРёС†Рµ)";
             return status;
         }
     }
